@@ -11,7 +11,7 @@ PYTHON_VERSION = "3.9"
 NODE_VERSION = "18.17.0"
 
 [phases.setup]
-nixPkgs = ["python39", "nodejs_18"]
+nixPkgs = ["python39", "nodejs_18", "python39Packages.pip"]
 cmds = [
     "npm install -g npm@latest",
     "npm install -g react-scripts@5.0.1"
@@ -32,6 +32,9 @@ cmds = [
 ]
 
 [deploy]
-startCommand = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
-healthcheckTimeout = 100 
+healthcheckTimeout = 100
+
+[nixpacks]
+start-command = "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT" 

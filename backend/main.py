@@ -32,20 +32,19 @@ GITHUB_ACCESS_TOKEN = os.getenv("GITHUB_ACCESS_TOKEN")
 
 @app.get("/health")
 async def health_check():
+    return {"status": "healthy"}
+
+@app.get("/github/check")
+async def github_check():
     try:
-        # Check if we can access GitHub API
         g = Github(GITHUB_ACCESS_TOKEN)
         user = g.get_user()
         return {
-            "status": "healthy",
-            "github": "connected",
+            "status": "connected",
             "user": user.login
         }
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 async def serve_spa(path: str = ""):
