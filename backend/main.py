@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from github import Github
 import os
 from dotenv import load_dotenv
@@ -20,6 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
+
 # Environment variables
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
@@ -27,7 +32,30 @@ GITHUB_ACCESS_TOKEN = os.getenv("GITHUB_ACCESS_TOKEN")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    try:
+        # Check if we can access GitHub API
+        g = Github(GITHUB_ACCESS_TOKEN)
+        user = g.get_user()
+        return {
+            "status": "healthy",
+            "github": "connected",
+            "user": user.login
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+
+@app.get("/")
+async def serve_spa(path: str = ""):
+    return FileResponse("frontend/build/index.html")
+
+@app.get("/{path:path}")
+async def serve_spa_paths(path: str):
+    if os.path.exists(f"frontend/build/{path}"):
+        return FileResponse(f"frontend/build/{path}")
+    return FileResponse("frontend/build/index.html")
 
 @app.get("/auth/github")
 async def github_auth():

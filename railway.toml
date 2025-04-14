@@ -26,7 +26,10 @@ cmds = [
 
 [phases.build]
 workdir = "frontend"
-cmds = ["npm run build"]
+cmds = [
+    "npm run build",
+    "cd .. && mkdir -p frontend/build/static"
+]
 
 [deploy]
 startCommand = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
