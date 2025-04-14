@@ -7,23 +7,18 @@ NIXPACKS_NODE_VERSION = "18"
 NPM_CONFIG_LEGACY_PEER_DEPS = "true"
 CI = "false"
 NODE_ENV = "production"
-PATH = "/opt/venv/bin:$PATH"
 
 [phases.setup]
 nixPkgs = [
     "python39",
     "python39Packages.pip",
     "python39Packages.setuptools",
+    "python39Packages.uvicorn",
     "nodejs_18"
-]
-cmds = [
-    "python3 -m venv /opt/venv",
-    "source /opt/venv/bin/activate"
 ]
 
 [phases.install]
 cmds = [
-    "source /opt/venv/bin/activate",
     "pip install --upgrade pip",
     "pip install -r requirements.txt",
     "cd frontend && rm -rf node_modules package-lock.json && npm install --legacy-peer-deps"
@@ -37,4 +32,4 @@ cmds = [
 ]
 
 [deploy]
-startCommand = "source /opt/venv/bin/activate && python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 4"
