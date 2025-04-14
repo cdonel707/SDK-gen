@@ -1,6 +1,11 @@
 [build]
 builder = "nixpacks"
-buildCommand = "python3 -m pip install --upgrade pip && pip install -r requirements.txt && cd frontend && npm install && npm run build"
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.9"
+NIXPACKS_NODE_VERSION = "18.17.0"
+PYTHON_VERSION = "3.9"
+NODE_VERSION = "18.17.0"
 
 [deploy]
 startCommand = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
