@@ -41,4 +41,4 @@ cmds = [
 cmd = "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
 
 [deploy]
-startCommand = "/nix/store/*-python3*/bin/python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT" 
+startCommand = "/nix/store/*-python3*/bin/python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
