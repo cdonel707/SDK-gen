@@ -1,0 +1,95 @@
+# 🌿 Fern SDK Demo Bot — Setup Guide
+
+This project automates the setup of SDK demo environments for potential customers using Fern. It spins up new GitHub repos, wires up SDK generation via Fern, and produces working Python + TypeScript SDKs based on uploaded OpenAPI specs — all from a simple web UI.
+
+---
+
+## 💡 What It Does
+
+1. Accepts a company name and OpenAPI spec via a web interface
+2. Authenticates the user via GitHub OAuth
+3. Automatically:
+   - Creates a `{company}-config` repo from the [fern-api/sdk-starter](https://github.com/fern-api/sdk-starter)
+   - Commits the provided OpenAPI spec to the repo
+   - Creates two SDK output repos:
+     - `{company}-python-sdk`
+     - `{company}-typescript-sdk`
+   - Updates the `generators.yml` to include the new spec and output locations
+   - Runs the Fern CLI to generate the SDKs
+4. Shows links to all created repos when done
+
+---
+
+## 🧱 Tech Stack
+
+| Layer       | Tech                                |
+|-------------|-------------------------------------|
+| Frontend    | React + Tailwind CSS                |
+| Backend     | FastAPI (Python) or Node.js         |
+| GitHub API  | [PyGithub](https://pygithub.readthedocs.io/) or Octokit |
+| OAuth       | GitHub OAuth App                    |
+| CLI         | Fern CLI (installed via `npm` or `brew`) |
+| Hosting     | [Railway](https://railway.app)      |
+
+---
+
+## 🖥️ Frontend UI
+
+### Features
+- GitHub login
+- Input form for:
+  - Company name
+  - File upload for OpenAPI spec
+  - Language selection (Python, TypeScript)
+- "Run" button to trigger backend automation
+- Success screen with links to generated repos
+
+### Example UI Flow
+1. Log in with GitHub
+2. Enter company name: Acme Inc
+3. Upload: acme-api.yaml
+4. Select: ✅ Python, ✅ TypeScript
+5. Click "Run"
+
+---
+
+## 🔐 GitHub OAuth
+
+- Register a GitHub OAuth App
+- Set callback to `https://your-railway-url.com/auth/callback`
+- Store the `client_id` and `client_secret` as Railway environment variables
+- Scope required: `repo`, `workflow`
+
+---
+
+## 📦 Backend Logic
+
+### `/setup` Endpoint
+
+1. Normalize company name → `acme-inc`
+2. Clone [`fern-api/sdk-starter`](https://github.com/fern-api/sdk-starter) into `fern-demo/acme-inc-config`
+3. Commit uploaded OpenAPI spec into `/openapi/`
+4. Create output repos:
+   - `fern-demo/acme-inc-python-sdk`
+   - `fern-demo/acme-inc-typescript-sdk`
+5. Edit `generators.yml` to match:
+
+```yaml
+api:
+  name: Acme API
+  docs: false
+  definition: ./openapi/acme-api.yaml
+  generators:
+    - name: fernapi/fern-python-sdk
+      output:
+        location: github
+        repo: fern-demo/acme-inc-python-sdk
+    - name: fernapi/fern-typescript-sdk
+      output:
+        location: github
+        repo: fern-demo/acme-inc-typescript-sdk
+
+```
+
+6. Run fern generate via subprocess or trigger a GitHub Actions workflow
+7. Return all created repo URLs
