@@ -1,0 +1,16 @@
+{
+  "name": "fern-sdk-demo-bot-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  }
+} 
