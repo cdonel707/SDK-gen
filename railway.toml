@@ -5,21 +5,27 @@ builder = "nixpacks"
 NIXPACKS_PYTHON_VERSION = "3.9"
 NIXPACKS_NODE_VERSION = "18"
 NPM_CONFIG_LEGACY_PEER_DEPS = "true"
+CI = "false"
 PYTHON_VERSION = "3.9"
 NODE_VERSION = "18.17.0"
 
 [phases.setup]
 nixPkgs = ["python39", "nodejs_18"]
+cmds = [
+    "npm install -g npm@latest"
+]
 
 [phases.install]
 cmds = [
     "python3 -m pip install --upgrade pip",
     "pip install -r requirements.txt",
-    "cd frontend && npm install"
+    "cd frontend && rm -rf node_modules package-lock.json && npm install"
 ]
 
 [phases.build]
-cmds = ["cd frontend && CI=false npm run build"]
+cmds = [
+    "cd frontend && NODE_ENV=production CI=false npm run build"
+]
 
 [deploy]
 startCommand = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
