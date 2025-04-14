@@ -1,23 +1,10 @@
 [build]
 builder = "nixpacks"
-watchPatterns = ["backend/**/*.py", "frontend/src/**/*"]
 
 [deploy]
 startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
 
-[phases.setup]
-nixPkgs = ["nodejs", "python3", "pip"]
-
-[phases.install]
-cmds = [
-  "python -m pip install --upgrade pip",
-  "pip install -r requirements.txt",
-  "cd frontend && npm install"
-]
-
-[phases.build]
-cmds = ["cd frontend && npm run build"] 
+[nixpacks]
+start-command = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT" 
