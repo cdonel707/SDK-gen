@@ -11,16 +11,22 @@ PYTHON_VERSION = "3.9"
 NODE_VERSION = "18.17.0"
 
 [phases.setup]
-nixPkgs = ["python39", "nodejs_18", "python39Packages.pip"]
+nixPkgs = [
+    "python39",
+    "python39Packages.pip",
+    "nodejs_18"
+]
 cmds = [
+    "ln -sf /nix/store/*-python3*/bin/python3 /usr/local/bin/python3",
+    "ln -sf /nix/store/*-python3*/bin/pip3 /usr/local/bin/pip3",
     "npm install -g npm@latest",
     "npm install -g react-scripts@5.0.1"
 ]
 
 [phases.install]
 cmds = [
-    "python3 -m pip install --upgrade pip",
-    "pip install -r requirements.txt",
+    "pip3 install --upgrade pip",
+    "pip3 install -r requirements.txt",
     "cd frontend && rm -rf node_modules package-lock.json && npm install --legacy-peer-deps"
 ]
 
@@ -31,5 +37,8 @@ cmds = [
     "cd .. && mkdir -p frontend/build/static"
 ]
 
+[start]
+cmd = "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+
 [deploy]
-startCommand = "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT" 
+startCommand = "/nix/store/*-python3*/bin/python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT" 
