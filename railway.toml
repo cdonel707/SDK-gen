@@ -24,13 +24,12 @@ cmds = [
     "python3 --version",
     "python3 -m pip install --upgrade pip",
     "python3 -m pip install -r requirements.txt",
-    "npm install",
-    "cd frontend && npm install --legacy-peer-deps"
+    "cd frontend && npm install --legacy-peer-deps && npm install react-scripts@5.0.1 --save-dev"
 ]
 
 [phases.build]
 cmds = [
-    "npm run build",
+    "cd frontend && CI=false npm run build",
     "mkdir -p frontend/build/static"
 ]
 
