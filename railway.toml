@@ -25,12 +25,12 @@ cmds = [
     "python3 -m pip install --upgrade pip",
     "python3 -m pip install -r requirements.txt",
     "npm install",
-    "npm run postinstall"
+    "cd frontend && npm install --legacy-peer-deps"
 ]
 
 [phases.build]
 cmds = [
-    "npm run build",
+    "cd frontend && npm run build",
     "mkdir -p frontend/build/static"
 ]
 
