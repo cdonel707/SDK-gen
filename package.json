@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "postinstall": "cd frontend && npm install",
-    "build": "cd frontend && CI=false npm run build"
+    "postinstall": "cd frontend && npm install --legacy-peer-deps",
+    "build": "cd frontend && npm run build"
   },
   "cacheDirectories": [
     "frontend/node_modules"
