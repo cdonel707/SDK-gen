@@ -28,10 +28,9 @@ cmds = [
 ]
 
 [phases.build]
-workdir = "frontend"
 cmds = [
-    "npm run build",
-    "cd .. && mkdir -p frontend/build/static"
+    "cd frontend && npm run build",
+    "mkdir -p frontend/build/static"
 ]
 
 [deploy]
