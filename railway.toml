@@ -3,10 +3,6 @@ builder = "nixpacks"
 
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.9"
-NIXPACKS_NODE_VERSION = "18"
-NPM_CONFIG_LEGACY_PEER_DEPS = "true"
-CI = "false"
-NODE_ENV = "production"
 PYTHONPATH = "/nix/store/*-python39-3.9.*/bin"
 
 [phases.setup]
@@ -14,25 +10,14 @@ nixPkgs = [
     "python39",
     "python39Packages.pip",
     "python39Packages.setuptools",
-    "python39Packages.uvicorn",
-    "nodejs_18"
+    "python39Packages.uvicorn"
 ]
 
 [phases.install]
 cmds = [
-    "which python3",
-    "python3 --version",
     "python3 -m pip install --upgrade pip",
-    "python3 -m pip install -r requirements.txt",
-    "npm install",
-    "cd frontend && npm install --legacy-peer-deps"
-]
-
-[phases.build]
-cmds = [
-    "cd frontend && npm run build",
-    "mkdir -p frontend/build/static"
+    "python3 -m pip install -r requirements.txt"
 ]
 
 [deploy]
-startCommand = "which python3 && python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 4"
+startCommand = "python3 -m uvicorn main:app --host 0.0.0.0 --port $PORT" 
