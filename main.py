@@ -566,11 +566,11 @@ async def handle_submission(
                 <a href="/" style="display: inline-block; margin-top: 2rem;">Create Another SDK</a>
 
                 <script>
-                function setupLocalEnv(companyName, username) {
+                function setupLocalEnv(companyName, username) {{
                     const setupCmd = `cd /tmp && \\
-git clone https://github.com/${username}/${companyName}-config.git && \\
+git clone https://github.com/${{username}}/${{companyName}}-config.git && \\
 npm install -g fern-api && \\
-cd ${companyName}-config && \\
+cd ${{companyName}}-config && \\
 fern upgrade && \\
 fern login`;
                     
@@ -579,21 +579,21 @@ fern login`;
                     
                     // Try different terminal protocols
                     const urls = [
-                        `iterm://localhost/bash?command=${encodedCmd}`,
-                        `x-terminal://localhost/bash?command=${encodedCmd}`
+                        `iterm://localhost/bash?command=${{encodedCmd}}`,
+                        `x-terminal://localhost/bash?command=${{encodedCmd}}`
                     ];
                     
-                    // Try each URL
-                    for (const url of urls) {
+                    // Try each
+                    for (const url of urls) {{
                         window.location.href = url;
                         break;  // For now, just try the first one
-                    }
+                    }}
                     
                     document.getElementById('setupStatus').innerHTML = 'Terminal command sent! Please check your terminal window.';
-                }
+                }}
 
-                function generateSDKs(companyName, username) {
-                    const generateCmd = `cd /tmp/${companyName}-config && \\
+                function generateSDKs(companyName, username) {{
+                    const generateCmd = `cd /tmp/${{companyName}}-config && \\
 fern generate --group python-sdk && \\
 fern generate --group ts-sdk`;
                     
@@ -602,18 +602,18 @@ fern generate --group ts-sdk`;
                     
                     // Try different terminal protocols
                     const urls = [
-                        `iterm://localhost/bash?command=${encodedCmd}`,
-                        `x-terminal://localhost/bash?command=${encodedCmd}`
+                        `iterm://localhost/bash?command=${{encodedCmd}}`,
+                        `x-terminal://localhost/bash?command=${{encodedCmd}}`
                     ];
                     
                     // Try each URL
-                    for (const url of urls) {
+                    for (const url of urls) {{
                         window.location.href = url;
                         break;  // For now, just try the first one
-                    }
+                    }}
                     
                     document.getElementById('generateStatus').innerHTML = 'Generation commands sent! Please check your terminal window.';
-                }
+                }}
                 </script>
             </div>
         """)
