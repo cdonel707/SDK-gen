@@ -47,7 +47,7 @@ os.makedirs("uploads", exist_ok=True)
 # Session management
 sessions = {}
 
-async def create_repo_from_template(access_token: str, company_name: str) -> tuple[str, Github, str]:
+async def create_repo_from_template(access_token: str, company_name: str, spec_file_name: str, spec_content: str) -> tuple[str, Github, str]:
     """Create a new repository from the template and delete existing spec."""
     try:
         g = Github(access_token)
@@ -148,11 +148,11 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
             # Create the new spec file
             try:
                 new_repo.create_file(
-                    path=f"fern/{spec_file.filename}",
+                    path=f"fern/{spec_file_name}",
                     message="Add OpenAPI specification",
-                    content=spec_file_content.decode('utf-8'),
+                    content=spec_content,
                 )
-                print(f"Created new spec file: fern/{spec_file.filename}")
+                print(f"Created new spec file: fern/{spec_file_name}")
             except GithubException as e:
                 raise HTTPException(status_code=500, detail=f"Failed to create spec file: {str(e)}")
 
@@ -457,7 +457,12 @@ async def handle_submission(
         spec_data = validate_openapi(content, file_extension)
 
         # Create repository from template and get Github instance
-        repo_url, g, repo_full_name = await create_repo_from_template(user['access_token'], company_name)
+        repo_url, g, repo_full_name = await create_repo_from_template(
+            user['access_token'], 
+            company_name,
+            openapi_spec.filename,
+            content.decode('utf-8')
+        )
         
         # Get the newly created repository
         new_repo = g.get_repo(repo_full_name)
