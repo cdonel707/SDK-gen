@@ -46,8 +46,8 @@ os.makedirs("uploads", exist_ok=True)
 # Session management
 sessions = {}
 
-async def create_repo_from_template(access_token: str, company_name: str) -> str:
-    """Create a new repository from the template."""
+async def create_repo_from_template(access_token: str, company_name: str) -> tuple[str, Github, str]:
+    """Create a new repository from the template and delete existing spec."""
     try:
         g = Github(access_token)
         auth_user = g.get_user()
@@ -71,6 +71,7 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
             )
 
             # Try to delete the existing OpenAPI spec file (trying both .yaml and .yml extensions)
+            deleted = False
             for file_path in ["fern/openapi.yaml", "fern/openapi.yml"]:
                 try:
                     contents = new_repo.get_contents(file_path)
@@ -80,13 +81,17 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
                         sha=contents.sha
                     )
                     print(f"Deleted existing {file_path}")
+                    deleted = True
                     break  # Exit loop after successful deletion
                 except GithubException as e:
                     if e.status != 404:  # Only raise if error is not "file not found"
                         raise
                     print(f"File {file_path} not found, trying next extension...")
 
-            return new_repo.html_url
+            if not deleted:
+                print("Warning: Could not find original spec file to delete")
+
+            return new_repo.html_url, g, new_repo.full_name
             
         except GithubException as e:
             print(f"Detailed GitHub error: Status {e.status}, Data: {e.data}")
@@ -361,12 +366,26 @@ async def handle_submission(
         content = await openapi_spec.read()
         spec_data = validate_openapi(content, file_extension)
 
-        # Create repository from template
-        repo_url = await create_repo_from_template(user['access_token'], company_name)
+        # Create repository from template and get Github instance
+        repo_url, g, repo_full_name = await create_repo_from_template(user['access_token'], company_name)
         
         # Get the newly created repository
-        g = Github(user['access_token'])
-        new_repo = g.get_repo(f"{g.get_user().login}/{company_name}-config")
+        new_repo = g.get_repo(repo_full_name)
+        
+        # Verify the original spec is gone before adding new one
+        try:
+            new_repo.get_contents("fern/openapi.yaml")
+            raise ValueError("Original spec file still exists - deletion may have failed")
+        except GithubException as e:
+            if e.status != 404:
+                raise
+        
+        try:
+            new_repo.get_contents("fern/openapi.yml")
+            raise ValueError("Original spec file still exists - deletion may have failed")
+        except GithubException as e:
+            if e.status != 404:
+                raise
         
         # Create the OpenAPI spec file with original filename in the fern directory
         new_repo.create_file(
