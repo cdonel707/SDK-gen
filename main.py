@@ -59,9 +59,9 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
         repo_description = f"SDK configuration for {company_name}"
         
         # Create repository from template
-        new_repo = g.get_user().create_repo_from_template(
+        new_repo = g.get_authenticated_user().create_repository_from_template(
             name=repo_name,
-            template_repository=template_repo,
+            template_repository_id=template_repo.id,
             description=repo_description,
             private=False
         )
@@ -97,8 +97,11 @@ async def get_current_user(request: Request):
 async def github_auth():
     """Redirect to GitHub OAuth page."""
     state = secrets.token_urlsafe(16)
+    scopes = "repo workflow"  # Add necessary scopes
     return RedirectResponse(
-        f"{GITHUB_AUTHORIZE_URL}?client_id={GITHUB_CLIENT_ID}&redirect_uri={RAILWAY_PUBLIC_URL}/auth/callback&state={state}"
+        f"{GITHUB_AUTHORIZE_URL}?client_id={GITHUB_CLIENT_ID}"
+        f"&redirect_uri={RAILWAY_PUBLIC_URL}/auth/callback"
+        f"&state={state}&scope={scopes}"
     )
 
 @app.get("/auth/callback")
