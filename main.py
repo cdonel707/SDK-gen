@@ -185,6 +185,33 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 print(f"Warning: Failed to update generators.yml: {str(e)}")
                 # Don't raise an exception here as the main functionality succeeded
 
+            # Create SDK repositories
+            try:
+                # Create Python SDK repository
+                python_repo_name = f"{company_name}-python-sdk"
+                print(f"Creating Python SDK repository: {python_repo_name}")
+                auth_user.create_repo(
+                    name=python_repo_name,
+                    description=f"Python SDK for {company_name} API",
+                    private=False,
+                    auto_init=True  # Initialize with README
+                )
+                print(f"Created Python SDK repository: {python_repo_name}")
+
+                # Create TypeScript SDK repository
+                typescript_repo_name = f"{company_name}-typescript-sdk"
+                print(f"Creating TypeScript SDK repository: {typescript_repo_name}")
+                auth_user.create_repo(
+                    name=typescript_repo_name,
+                    description=f"TypeScript SDK for {company_name} API",
+                    private=False,
+                    auto_init=True  # Initialize with README
+                )
+                print(f"Created TypeScript SDK repository: {typescript_repo_name}")
+            except GithubException as e:
+                print(f"Warning: Failed to create SDK repositories: {str(e)}")
+                # Don't raise an exception as the main config repo was created successfully
+
             return new_repo.html_url, g, new_repo.full_name
             
         except GithubException as e:
@@ -475,8 +502,13 @@ async def handle_submission(
             <div class="container">
                 <h1>Success!</h1>
                 <p class="success">Setup completed for {company_name}</p>
-                <p>Repository created: <a href="{repo_url}" target="_blank">{repo_url}</a></p>
+                <p>Configuration repository created: <a href="{repo_url}" target="_blank">{repo_url}</a></p>
                 <p>OpenAPI spec uploaded as fern/{openapi_spec.filename}</p>
+                <p>SDK repositories created:</p>
+                <ul>
+                    <li><a href="https://github.com/{user['login']}/{company_name}-python-sdk" target="_blank">{company_name}-python-sdk</a></li>
+                    <li><a href="https://github.com/{user['login']}/{company_name}-typescript-sdk" target="_blank">{company_name}-typescript-sdk</a></li>
+                </ul>
                 <a href="/">Submit another</a>
             </div>
         """)
