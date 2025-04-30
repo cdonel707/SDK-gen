@@ -49,7 +49,7 @@ sessions = {}
 async def create_repo_from_template(access_token: str, company_name: str) -> str:
     """Create a new repository from the template."""
     try:
-        g = Github(access_token)
+        g = Github(auth=access_token)  # Use auth parameter instead
         auth_user = g.get_user()
         
         # Get the template repository
@@ -129,15 +129,15 @@ async def github_callback(code: str, state: str):
         if not access_token:
             raise HTTPException(status_code=400, detail="Failed to get access token")
 
-        # Get user info
+        # Get user info using the token in the Authorization header
         user_response = await client.get(
             GITHUB_USER_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
+            headers={"Authorization": f"token {access_token}"},  # Changed from Bearer to token
         )
         user_data = user_response.json()
         
         # Store access token in user data
-        user_data['access_token'] = access_token
+        user_data['access_token'] = f"token {access_token}"  # Store with 'token ' prefix
 
         # Create session
         session_id = secrets.token_urlsafe(32)
