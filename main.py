@@ -47,7 +47,7 @@ os.makedirs("uploads", exist_ok=True)
 # Session management
 sessions = {}
 
-async def create_repo_from_template(access_token: str, company_name: str, spec_file_name: str, spec_content: str) -> tuple[str, Github, str]:
+async def create_repo_from_template(access_token: str, company_name: str, spec_file_name: str, spec_content: str) -> tuple[str, Github, str, str]:
     """Create a new repository from the template and delete existing spec."""
     try:
         g = Github(access_token)
@@ -185,12 +185,12 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 print(f"Warning: Failed to update generators.yml: {str(e)}")
                 # Don't raise an exception here as the main functionality succeeded
 
-            # Create SDK repositories
+            # Create SDK repositories and install Fern API app
             try:
                 # Create Python SDK repository
                 python_repo_name = f"{company_name}-python-sdk"
                 print(f"Creating Python SDK repository: {python_repo_name}")
-                auth_user.create_repo(
+                python_repo = auth_user.create_repo(
                     name=python_repo_name,
                     description=f"Python SDK for {company_name} API",
                     private=False,
@@ -201,18 +201,32 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 # Create TypeScript SDK repository
                 typescript_repo_name = f"{company_name}-typescript-sdk"
                 print(f"Creating TypeScript SDK repository: {typescript_repo_name}")
-                auth_user.create_repo(
+                typescript_repo = auth_user.create_repo(
                     name=typescript_repo_name,
                     description=f"TypeScript SDK for {company_name} API",
                     private=False,
                     auto_init=True  # Initialize with README
                 )
                 print(f"Created TypeScript SDK repository: {typescript_repo_name}")
+
+                # Install Fern API app in all repositories
+                fern_app_url = "https://github.com/apps/fern-api/installations/new"
+                repos_to_install = [
+                    new_repo.full_name,  # Config repo
+                    f"{auth_user.login}/{python_repo_name}",  # Python SDK repo
+                    f"{auth_user.login}/{typescript_repo_name}"  # TypeScript SDK repo
+                ]
+                
+                installation_url = f"{fern_app_url}?repository_ids={','.join([str(repo.id) for repo in [new_repo, python_repo, typescript_repo]])}"
+                print(f"Installing Fern API app in repositories...")
+                
+                # Return the installation URL to the user
+                return new_repo.html_url, g, new_repo.full_name, installation_url
+
             except GithubException as e:
                 print(f"Warning: Failed to create SDK repositories: {str(e)}")
                 # Don't raise an exception as the main config repo was created successfully
-
-            return new_repo.html_url, g, new_repo.full_name
+                return new_repo.html_url, g, new_repo.full_name, None
             
         except GithubException as e:
             print(f"Detailed GitHub error: Status {e.status}, Data: {e.data}")
@@ -488,7 +502,7 @@ async def handle_submission(
         spec_data = validate_openapi(content, file_extension)
 
         # Create repository from template and get Github instance
-        repo_url, g, repo_full_name = await create_repo_from_template(
+        repo_url, g, repo_full_name, installation_url = await create_repo_from_template(
             user['access_token'], 
             company_name,
             openapi_spec.filename,
@@ -502,14 +516,28 @@ async def handle_submission(
             <div class="container">
                 <h1>Success!</h1>
                 <p class="success">Setup completed for {company_name}</p>
-                <p>Configuration repository created: <a href="{repo_url}" target="_blank">{repo_url}</a></p>
-                <p>OpenAPI spec uploaded as fern/{openapi_spec.filename}</p>
-                <p>SDK repositories created:</p>
+                <h2>Created Repositories:</h2>
                 <ul>
-                    <li><a href="https://github.com/{user['login']}/{company_name}-python-sdk" target="_blank">{company_name}-python-sdk</a></li>
-                    <li><a href="https://github.com/{user['login']}/{company_name}-typescript-sdk" target="_blank">{company_name}-typescript-sdk</a></li>
+                    <li>Configuration: <a href="{repo_url}" target="_blank">{repo_url}</a></li>
+                    <li>Python SDK: <a href="https://github.com/{user['login']}/{company_name}-python-sdk" target="_blank">{company_name}-python-sdk</a></li>
+                    <li>TypeScript SDK: <a href="https://github.com/{user['login']}/{company_name}-typescript-sdk" target="_blank">{company_name}-typescript-sdk</a></li>
                 </ul>
-                <a href="/">Submit another</a>
+                <p>OpenAPI spec uploaded as fern/{openapi_spec.filename}</p>
+                
+                <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
+                    <h2>Final Step: Install Fern API</h2>
+                    <p>To enable automatic SDK generation, please install the Fern API GitHub App:</p>
+                    <ol style="text-align: left;">
+                        <li>Click the button below to open the installation page</li>
+                        <li>Review the repository access</li>
+                        <li>Click "Install" to complete the setup</li>
+                    </ol>
+                    <a href="{installation_url}" target="_blank" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #2ea44f; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                        Install Fern API
+                    </a>
+                </div>
+                
+                <a href="/" style="display: inline-block; margin-top: 2rem;">Create Another SDK</a>
             </div>
         """)
     except ValueError as e:
