@@ -37,7 +37,7 @@ GITHUB_USER_URL = "https://api.github.com/user"
 RAILWAY_PUBLIC_URL = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"
 
 # GitHub Template Configuration
-TEMPLATE_OWNER = "fern-api"
+TEMPLATE_OWNER = "cdonel707"
 TEMPLATE_REPO = "sdk-starter"
 
 # Create uploads directory if it doesn't exist
