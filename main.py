@@ -108,13 +108,13 @@ async def read_root(request: Request):
     """Show the form or login page."""
     try:
         user = await get_current_user(request)
-        return """
+        html_content = f"""
         <!DOCTYPE html>
         <html>
             <head>
                 <title>SDK Setup</title>
                 <style>
-                    body {
+                    body {{
                         font-family: Arial, sans-serif;
                         display: flex;
                         justify-content: center;
@@ -122,8 +122,8 @@ async def read_root(request: Request):
                         min-height: 100vh;
                         margin: 0;
                         background-color: #f0f0f0;
-                    }
-                    .container {
+                    }}
+                    .container {{
                         text-align: center;
                         padding: 2rem;
                         background-color: white;
@@ -131,29 +131,29 @@ async def read_root(request: Request):
                         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                         width: 80%;
                         max-width: 600px;
-                    }
-                    h1 {
+                    }}
+                    h1 {{
                         color: #333;
                         margin-bottom: 2rem;
-                    }
-                    .form-group {
+                    }}
+                    .form-group {{
                         margin-bottom: 1rem;
                         text-align: left;
-                    }
-                    label {
+                    }}
+                    label {{
                         display: block;
                         margin-bottom: 0.5rem;
                         color: #555;
-                    }
+                    }}
                     input[type="text"],
-                    input[type="file"] {
+                    input[type="file"] {{
                         width: 100%;
                         padding: 0.5rem;
                         border: 1px solid #ddd;
                         border-radius: 4px;
                         box-sizing: border-box;
-                    }
-                    button {
+                    }}
+                    button {{
                         background-color: #4CAF50;
                         color: white;
                         padding: 0.5rem 1rem;
@@ -162,28 +162,28 @@ async def read_root(request: Request):
                         cursor: pointer;
                         font-size: 1rem;
                         margin-top: 1rem;
-                    }
-                    button:hover {
+                    }}
+                    button:hover {{
                         background-color: #45a049;
-                    }
-                    .error {
+                    }}
+                    .error {{
                         color: red;
                         margin-top: 1rem;
-                    }
-                    .success {
+                    }}
+                    .success {{
                         color: green;
                         margin-top: 1rem;
-                    }
-                    .file-info {
+                    }}
+                    .file-info {{
                         font-size: 0.9rem;
                         color: #666;
                         margin-top: 0.5rem;
-                    }
-                    .user-info {
+                    }}
+                    .user-info {{
                         text-align: right;
                         margin-bottom: 1rem;
                         color: #666;
-                    }
+                    }}
                 </style>
             </head>
             <body>
@@ -208,7 +208,8 @@ async def read_root(request: Request):
                 </div>
             </body>
         </html>
-        """.format(user=user)
+        """
+        return html_content
     except HTTPException:
         return """
         <!DOCTYPE html>
