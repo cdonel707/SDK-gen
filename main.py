@@ -89,23 +89,30 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
             deleted = False
             for file_path in ["fern/openapi.yaml", "fern/openapi.yml"]:
                 try:
+                    print(f"Attempting to get contents of {file_path}")
                     contents = new_repo.get_contents(file_path)
+                    print(f"Found file {file_path} with SHA: {contents.sha}")
+                    
+                    print(f"Attempting to delete {file_path}")
                     new_repo.delete_file(
                         path=contents.path,
                         message="Remove default OpenAPI spec",
                         sha=contents.sha
                     )
-                    print(f"Deleted existing {file_path}")
+                    print(f"Delete API call completed for {file_path}")
+                    
                     # Wait and verify deletion
                     if await verify_file_deleted(new_repo, file_path):
+                        print(f"Verified deletion of {file_path}")
                         deleted = True
                         break  # Exit loop after successful deletion and verification
                     else:
                         print(f"Warning: {file_path} deletion could not be verified")
                 except GithubException as e:
                     if e.status != 404:  # Only raise if error is not "file not found"
+                        print(f"GitHub error for {file_path}: Status {e.status}, Data: {e.data}")
                         raise
-                    print(f"File {file_path} not found, trying next extension...")
+                    print(f"File {file_path} not found (404), trying next extension...")
 
             if not deleted:
                 print("Warning: Could not find original spec file to delete")
