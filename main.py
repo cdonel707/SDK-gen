@@ -145,6 +145,42 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
             # Add a longer delay before creating the new file
             await asyncio.sleep(5)  # Wait 5 seconds before creating new file
 
+            # Create the new spec file
+            try:
+                new_repo.create_file(
+                    path=f"fern/{spec_file.filename}",
+                    message="Add OpenAPI specification",
+                    content=spec_file_content.decode('utf-8'),
+                )
+                print(f"Created new spec file: fern/{spec_file.filename}")
+            except GithubException as e:
+                raise HTTPException(status_code=500, detail=f"Failed to create spec file: {str(e)}")
+
+            # Update generators.yml with correct repository names
+            try:
+                generators_yml = new_repo.get_contents("fern/generators.yml")
+                current_content = generators_yml.decoded_content.decode('utf-8')
+                
+                # Replace the commented repository lines with uncommented versions using the company name
+                updated_content = current_content.replace(
+                    '# github:\n          #   repository: fern-demo/starter-python-sdk',
+                    f'github:\n            repository: {company_name}-python-sdk'
+                ).replace(
+                    '# github:\n          #   repository: fern-demo/starter-typescript-sdk',
+                    f'github:\n            repository: {company_name}-typescript-sdk'
+                )
+                
+                new_repo.update_file(
+                    path="fern/generators.yml",
+                    message="Update SDK repository names",
+                    content=updated_content,
+                    sha=generators_yml.sha
+                )
+                print("Updated generators.yml with SDK repository names")
+            except GithubException as e:
+                print(f"Warning: Failed to update generators.yml: {str(e)}")
+                # Don't raise an exception here as the main functionality succeeded
+
             return new_repo.html_url, g, new_repo.full_name
             
         except GithubException as e:
