@@ -566,6 +566,20 @@ async def handle_submission(
                 <a href="/" style="display: inline-block; margin-top: 2rem;">Create Another SDK</a>
 
                 <script>
+                function copyToClipboard(text) {{
+                    // Create a temporary textarea element
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    
+                    // Select and copy the text
+                    textarea.select();
+                    document.execCommand('copy');
+                    
+                    // Clean up
+                    document.body.removeChild(textarea);
+                }}
+
                 function setupLocalEnv(companyName, username) {{
                     const setupCmd = `cd /tmp && \\
 git clone https://github.com/${{username}}/${{companyName}}-config.git && \\
@@ -574,22 +588,13 @@ cd ${{companyName}}-config && \\
 fern upgrade && \\
 fern login`;
                     
-                    // URL encode the command
-                    const encodedCmd = encodeURIComponent(setupCmd);
-                    
-                    // Try different terminal protocols
-                    const urls = [
-                        `iterm://localhost/bash?command=${{encodedCmd}}`,
-                        `x-terminal://localhost/bash?command=${{encodedCmd}}`
-                    ];
-                    
-                    // Try each
-                    for (const url of urls) {{
-                        window.location.href = url;
-                        break;  // For now, just try the first one
-                    }}
-                    
-                    document.getElementById('setupStatus').innerHTML = 'Terminal command sent! Please check your terminal window.';
+                    copyToClipboard(setupCmd);
+                    document.getElementById('setupStatus').innerHTML = `
+                        <div style="background-color: #e8f5e9; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+                            <p style="margin: 0 0 0.5rem 0;"><strong>✓ Command copied to clipboard!</strong></p>
+                            <p style="margin: 0; font-size: 0.9rem;">Please paste and run the command in your terminal.</p>
+                        </div>
+                    `;
                 }}
 
                 function generateSDKs(companyName, username) {{
@@ -597,22 +602,13 @@ fern login`;
 fern generate --group python-sdk && \\
 fern generate --group ts-sdk`;
                     
-                    // URL encode the command
-                    const encodedCmd = encodeURIComponent(generateCmd);
-                    
-                    // Try different terminal protocols
-                    const urls = [
-                        `iterm://localhost/bash?command=${{encodedCmd}}`,
-                        `x-terminal://localhost/bash?command=${{encodedCmd}}`
-                    ];
-                    
-                    // Try each URL
-                    for (const url of urls) {{
-                        window.location.href = url;
-                        break;  // For now, just try the first one
-                    }}
-                    
-                    document.getElementById('generateStatus').innerHTML = 'Generation commands sent! Please check your terminal window.';
+                    copyToClipboard(generateCmd);
+                    document.getElementById('generateStatus').innerHTML = `
+                        <div style="background-color: #e8f5e9; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+                            <p style="margin: 0 0 0.5rem 0;"><strong>✓ Command copied to clipboard!</strong></p>
+                            <p style="margin: 0; font-size: 0.9rem;">Please paste and run the command in your terminal.</p>
+                        </div>
+                    `;
                 }}
                 </script>
             </div>
