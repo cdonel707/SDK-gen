@@ -541,18 +541,23 @@ async def handle_submission(
                 </div>
 
                 <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
-                    <h2>Step 2: Setup Fern CLI</h2>
-                    <p>Once you've installed the GitHub App, click below to setup the Fern CLI:</p>
-                    <button id="setupFernBtn" onclick="setupFern('{company_name}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                        Setup Fern CLI
+                    <h2>Step 2: Setup Local Environment</h2>
+                    <p>This will open your terminal and:</p>
+                    <ol style="text-align: left;">
+                        <li>Clone the configuration repository</li>
+                        <li>Install Fern CLI</li>
+                        <li>Run initial setup and login</li>
+                    </ol>
+                    <button onclick="setupLocalEnv('{company_name}', '{user['login']}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        Setup Local Environment
                     </button>
-                    <div id="fernSetupStatus" style="margin-top: 1rem;"></div>
+                    <div id="setupStatus" style="margin-top: 1rem;"></div>
                 </div>
 
-                <div id="generateStep" style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px; display: none;">
+                <div id="generateStep" style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
                     <h2>Step 3: Generate SDKs</h2>
-                    <p>After completing Fern authentication, click below to generate your SDKs:</p>
-                    <button id="generateSDKsBtn" onclick="generateSDKs('{company_name}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                    <p>After completing Fern authentication in your terminal, click below to generate your SDKs:</p>
+                    <button onclick="generateSDKs('{company_name}', '{user['login']}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
                         Generate SDKs
                     </button>
                     <div id="generateStatus" style="margin-top: 1rem;"></div>
@@ -561,62 +566,54 @@ async def handle_submission(
                 <a href="/" style="display: inline-block; margin-top: 2rem;">Create Another SDK</a>
 
                 <script>
-                async function setupFern(companyName) {{
-                    const setupBtn = document.getElementById('setupFernBtn');
-                    const statusDiv = document.getElementById('fernSetupStatus');
-                    setupBtn.disabled = true;
-                    statusDiv.innerHTML = 'Setting up Fern CLI...';
+                function setupLocalEnv(companyName, username) {
+                    const setupCmd = `cd /tmp && \\
+git clone https://github.com/${username}/${companyName}-config.git && \\
+npm install -g fern-api && \\
+cd ${companyName}-config && \\
+fern upgrade && \\
+fern login`;
                     
-                    try {{
-                        const response = await fetch('/setup-fern', {{
-                            method: 'POST',
-                            headers: {{
-                                'Content-Type': 'application/json'
-                            }},
-                            body: JSON.stringify({{ company_name: companyName }})
-                        }});
-                        
-                        if (response.ok) {{
-                            statusDiv.innerHTML = 'Fern CLI setup complete! Please complete authentication in the opened window.';
-                            document.getElementById('generateStep').style.display = 'block';
-                        }} else {{
-                            const error = await response.text();
-                            statusDiv.innerHTML = `Error: ${{error}}`;
-                            setupBtn.disabled = false;
-                        }}
-                    }} catch (error) {{
-                        statusDiv.innerHTML = `Error: ${{error.message}}`;
-                        setupBtn.disabled = false;
-                    }}
-                }}
+                    // URL encode the command
+                    const encodedCmd = encodeURIComponent(setupCmd);
+                    
+                    // Try different terminal protocols
+                    const urls = [
+                        `iterm://localhost/bash?command=${encodedCmd}`,
+                        `x-terminal://localhost/bash?command=${encodedCmd}`
+                    ];
+                    
+                    // Try each URL
+                    for (const url of urls) {
+                        window.location.href = url;
+                        break;  // For now, just try the first one
+                    }
+                    
+                    document.getElementById('setupStatus').innerHTML = 'Terminal command sent! Please check your terminal window.';
+                }
 
-                async function generateSDKs(companyName) {{
-                    const generateBtn = document.getElementById('generateSDKsBtn');
-                    const statusDiv = document.getElementById('generateStatus');
-                    generateBtn.disabled = true;
-                    statusDiv.innerHTML = 'Generating SDKs...';
+                function generateSDKs(companyName, username) {
+                    const generateCmd = `cd /tmp/${companyName}-config && \\
+fern generate --group python-sdk && \\
+fern generate --group ts-sdk`;
                     
-                    try {{
-                        const response = await fetch('/generate-sdks', {{
-                            method: 'POST',
-                            headers: {{
-                                'Content-Type': 'application/json'
-                            }},
-                            body: JSON.stringify({{ company_name: companyName }})
-                        }});
-                        
-                        if (response.ok) {{
-                            statusDiv.innerHTML = 'SDKs generated successfully!';
-                        }} else {{
-                            const error = await response.text();
-                            statusDiv.innerHTML = `Error: ${{error}}`;
-                            generateBtn.disabled = false;
-                        }}
-                    }} catch (error) {{
-                        statusDiv.innerHTML = `Error: ${{error.message}}`;
-                        generateBtn.disabled = false;
-                    }}
-                }}
+                    // URL encode the command
+                    const encodedCmd = encodeURIComponent(generateCmd);
+                    
+                    // Try different terminal protocols
+                    const urls = [
+                        `iterm://localhost/bash?command=${encodedCmd}`,
+                        `x-terminal://localhost/bash?command=${encodedCmd}`
+                    ];
+                    
+                    // Try each URL
+                    for (const url of urls) {
+                        window.location.href = url;
+                        break;  // For now, just try the first one
+                    }
+                    
+                    document.getElementById('generateStatus').innerHTML = 'Generation commands sent! Please check your terminal window.';
+                }
                 </script>
             </div>
         """)
