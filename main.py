@@ -49,30 +49,36 @@ sessions = {}
 async def create_repo_from_template(access_token: str, company_name: str) -> str:
     """Create a new repository from the template."""
     try:
-        g = Github(access_token)  # Pass token directly, not as auth parameter
+        g = Github(access_token)
         auth_user = g.get_user()
+        print(f"Authenticated as user: {auth_user.login}")
         
         # Get the template repository
         template_repo = g.get_repo(f"{TEMPLATE_OWNER}/{TEMPLATE_REPO}")
+        print(f"Template repo: {template_repo.full_name}, Is template: {template_repo.is_template}")
         
         # Create a new repository from the template
         repo_name = f"{company_name}-config"
         repo_description = f"SDK configuration for {company_name}"
         
-        # Create repository from template using the correct method
-        new_repo = auth_user.create_repo_from_template(
-            name=repo_name,
-            description=repo_description,
-            private=False,
-            repo=template_repo
-        )
-        
-        return new_repo.html_url
+        try:
+            # Create repository from template using the correct method
+            new_repo = auth_user.create_repo_from_template(
+                name=repo_name,
+                description=repo_description,
+                private=False,
+                repo=template_repo
+            )
+            return new_repo.html_url
+        except GithubException as e:
+            print(f"Detailed GitHub error: Status {e.status}, Data: {e.data}")
+            raise
+            
     except GithubException as e:
         if e.status == 422:  # Repository already exists
             raise ValueError(f"A repository named '{repo_name}' already exists.")
         elif e.status == 403:  # Permission denied
-            raise ValueError("Permission denied. Please ensure you have granted the necessary repository permissions.")
+            raise ValueError(f"Permission denied. GitHub says: {e.data.get('message', 'No message provided')}")
         elif e.status == 404:  # Template not found
             raise ValueError("Template repository not found. Please check the template exists and you have access to it.")
         raise ValueError(f"GitHub API error ({e.status}): {e.data.get('message', str(e))}")
