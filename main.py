@@ -60,11 +60,11 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
         repo_description = f"SDK configuration for {company_name}"
         
         # Create repository from template using the correct method
-        new_repo = template_repo.create_repository_from_template(
+        new_repo = auth_user.create_repository_from_template(
             name=repo_name,
             description=repo_description,
             private=False,
-            owner=auth_user.login
+            template_repository=template_repo
         )
         
         return new_repo.html_url
