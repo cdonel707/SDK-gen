@@ -171,10 +171,10 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                     f'    - openapi: {spec_file_name}'
                 ).replace(
                     '          # github:\n          #   repository: fern-demo/starter-python-sdk',
-                    f'        github:\n          repository: {company_name}-python-sdk'
+                    f'        github:\n          repository: {auth_user.login}/{company_name}-python-sdk'
                 ).replace(
                     '          # github:\n          #   repository: fern-demo/starter-typescript-sdk',
-                    f'        github:\n          repository: {company_name}-typescript-sdk'
+                    f'        github:\n          repository: {auth_user.login}/{company_name}-typescript-sdk'
                 )
                 
                 new_repo.update_file(
