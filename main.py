@@ -325,97 +325,208 @@ async def read_root(request: Request):
         <html>
             <head>
                 <title>SDK Setup</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
                 <style>
+                    * {{
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }}
+
                     body {{
-                        font-family: Arial, sans-serif;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                        min-height: 100vh;
+                        background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%);
+                        color: #1f2937;
+                        line-height: 1.5;
                         display: flex;
                         justify-content: center;
                         align-items: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        background-color: #f0f0f0;
-                    }}
-                    .container {{
-                        text-align: center;
                         padding: 2rem;
-                        background-color: white;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        width: 80%;
-                        max-width: 600px;
                     }}
+
+                    .container {{
+                        background: white;
+                        border-radius: 16px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                        width: 100%;
+                        max-width: 640px;
+                        padding: 2.5rem;
+                        transition: transform 0.2s ease;
+                    }}
+
+                    .container:hover {{
+                        transform: translateY(-2px);
+                    }}
+
                     h1 {{
-                        color: #333;
+                        font-size: 2rem;
+                        font-weight: 600;
+                        color: #111827;
                         margin-bottom: 2rem;
+                        text-align: center;
                     }}
+
                     .form-group {{
-                        margin-bottom: 1rem;
-                        text-align: left;
+                        margin-bottom: 1.5rem;
                     }}
+
                     label {{
                         display: block;
+                        font-weight: 500;
                         margin-bottom: 0.5rem;
-                        color: #555;
+                        color: #374151;
+                        font-size: 0.95rem;
                     }}
-                    input[type="text"],
+
+                    input[type="text"] {{
+                        width: 100%;
+                        padding: 0.75rem 1rem;
+                        border: 1px solid #d1d5db;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        transition: all 0.2s ease;
+                        background: #f9fafb;
+                    }}
+
+                    input[type="text"]:focus {{
+                        outline: none;
+                        border-color: #2563eb;
+                        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+                        background: white;
+                    }}
+
                     input[type="file"] {{
                         width: 100%;
-                        padding: 0.5rem;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        box-sizing: border-box;
-                    }}
-                    button {{
-                        background-color: #4CAF50;
-                        color: white;
-                        padding: 0.5rem 1rem;
-                        border: none;
-                        border-radius: 4px;
+                        padding: 0.75rem;
+                        border: 2px dashed #d1d5db;
+                        border-radius: 8px;
+                        font-size: 0.95rem;
                         cursor: pointer;
-                        font-size: 1rem;
-                        margin-top: 1rem;
+                        transition: all 0.2s ease;
                     }}
-                    button:hover {{
-                        background-color: #45a049;
+
+                    input[type="file"]:hover {{
+                        border-color: #2563eb;
+                        background: rgba(37, 99, 235, 0.05);
                     }}
-                    .error {{
-                        color: red;
-                        margin-top: 1rem;
-                    }}
-                    .success {{
-                        color: green;
-                        margin-top: 1rem;
-                    }}
+
                     .file-info {{
-                        font-size: 0.9rem;
-                        color: #666;
+                        font-size: 0.875rem;
+                        color: #6b7280;
                         margin-top: 0.5rem;
+                        padding-left: 0.5rem;
                     }}
+
+                    button {{
+                        width: 100%;
+                        padding: 0.875rem 1.5rem;
+                        background: #2563eb;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        font-weight: 500;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        margin-top: 1rem;
+                    }}
+
+                    button:hover {{
+                        background: #1d4ed8;
+                        transform: translateY(-1px);
+                    }}
+
+                    button:active {{
+                        transform: translateY(0);
+                    }}
+
                     .user-info {{
-                        text-align: right;
-                        margin-bottom: 1rem;
-                        color: #666;
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-end;
+                        margin-bottom: 2rem;
+                        padding-bottom: 1rem;
+                        border-bottom: 1px solid #e5e7eb;
+                    }}
+
+                    .user-info a {{
+                        color: #4b5563;
+                        text-decoration: none;
+                        font-size: 0.95rem;
+                        padding: 0.5rem 1rem;
+                        border-radius: 6px;
+                        transition: all 0.2s ease;
+                        margin-left: 1rem;
+                    }}
+
+                    .user-info a:hover {{
+                        background: #f3f4f6;
+                        color: #111827;
+                    }}
+
+                    .user-avatar {{
+                        width: 32px;
+                        height: 32px;
+                        border-radius: 50%;
+                        margin-right: 0.75rem;
+                    }}
+
+                    .user-name {{
+                        font-weight: 500;
+                        color: #374151;
+                    }}
+
+                    @media (max-width: 640px) {{
+                        body {{
+                            padding: 1rem;
+                        }}
+
+                        .container {{
+                            padding: 1.5rem;
+                        }}
+
+                        h1 {{
+                            font-size: 1.75rem;
+                        }}
                     }}
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="user-info">
-                        Logged in as: {user['login']}
-                        <a href="/logout" style="margin-left: 1rem; color: #666;">Logout</a>
+                        <img src="{user.get('avatar_url', 'https://github.com/identicons/' + user['login'])}" alt="Avatar" class="user-avatar">
+                        <span class="user-name">{user['login']}</span>
+                        <a href="/logout">Logout</a>
                     </div>
                     <h1>SDK Setup</h1>
                     <form action="/submit" method="post" enctype="multipart/form-data">
                         <div class="form-group">
-                            <label for="company_name">Company Name:</label>
-                            <input type="text" id="company_name" name="company_name" required>
+                            <label for="company_name">Company Name</label>
+                            <input 
+                                type="text" 
+                                id="company_name" 
+                                name="company_name" 
+                                placeholder="Enter your company name"
+                                required
+                            >
                         </div>
                         <div class="form-group">
-                            <label for="openapi_spec">OpenAPI Specification:</label>
-                            <input type="file" id="openapi_spec" name="openapi_spec" accept=".json,.yaml,.yml" required>
-                            <div class="file-info">Supported formats: JSON (.json), YAML (.yaml, .yml)</div>
+                            <label for="openapi_spec">OpenAPI Specification</label>
+                            <input 
+                                type="file" 
+                                id="openapi_spec" 
+                                name="openapi_spec" 
+                                accept=".json,.yaml,.yml" 
+                                required
+                            >
+                            <div class="file-info">
+                                Supported formats: JSON (.json), YAML (.yaml, .yml)
+                            </div>
                         </div>
-                        <button type="submit">Submit</button>
+                        <button type="submit">Generate SDK</button>
                     </form>
                 </div>
             </body>
@@ -516,102 +627,326 @@ async def handle_submission(
         new_repo = g.get_repo(repo_full_name)
         
         return HTMLResponse(f"""
-            <div class="container">
-                <h1>Success!</h1>
-                <p class="success">Setup completed for {company_name}</p>
-                <h2>Created Repositories:</h2>
-                <ul>
-                    <li>Configuration: <a href="{repo_url}" target="_blank">{repo_url}</a></li>
-                    <li>Python SDK: <a href="https://github.com/{user['login']}/{company_name}-python-sdk" target="_blank">{company_name}-python-sdk</a></li>
-                    <li>TypeScript SDK: <a href="https://github.com/{user['login']}/{company_name}-typescript-sdk" target="_blank">{company_name}-typescript-sdk</a></li>
-                </ul>
-                <p>OpenAPI spec uploaded as fern/{openapi_spec.filename}</p>
-                
-                <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
-                    <h2>Step 1: Install Fern API</h2>
-                    <p>To enable automatic SDK generation, please install the Fern API GitHub App:</p>
-                    <ol style="text-align: left;">
-                        <li>Click the button below to open the installation page</li>
-                        <li>Review the repository access</li>
-                        <li>Click "Install" to complete the setup</li>
-                    </ol>
-                    <a href="{installation_url}" target="_blank" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #2ea44f; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                        Install Fern API
-                    </a>
-                </div>
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>SDK Setup - Success</title>
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+                    <style>
+                        * {{
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }}
 
-                <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
-                    <h2>Step 2: Setup Local Environment</h2>
-                    <p>This will open your terminal and:</p>
-                    <ol style="text-align: left;">
-                        <li>Clone the configuration repository</li>
-                        <li>Install Fern CLI</li>
-                        <li>Run initial setup and login</li>
-                    </ol>
-                    <button onclick="setupLocalEnv('{company_name}', '{user['login']}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                        Setup Local Environment
-                    </button>
-                    <div id="setupStatus" style="margin-top: 1rem;"></div>
-                </div>
+                        body {{
+                            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                            min-height: 100vh;
+                            background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%);
+                            color: #1f2937;
+                            line-height: 1.5;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            padding: 2rem;
+                        }}
 
-                <div id="generateStep" style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
-                    <h2>Step 3: Generate SDKs</h2>
-                    <p>After completing Fern authentication in your terminal, click below to generate your SDKs:</p>
-                    <button onclick="generateSDKs('{company_name}', '{user['login']}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                        Generate SDKs
-                    </button>
-                    <div id="generateStatus" style="margin-top: 1rem;"></div>
-                </div>
-                
-                <a href="/" style="display: inline-block; margin-top: 2rem;">Create Another SDK</a>
+                        .container {{
+                            background: white;
+                            border-radius: 16px;
+                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                            width: 100%;
+                            max-width: 720px;
+                            padding: 2.5rem;
+                        }}
 
-                <script>
-                function copyToClipboard(text) {{
-                    // Create a temporary textarea element
-                    const textarea = document.createElement('textarea');
-                    textarea.value = text;
-                    document.body.appendChild(textarea);
-                    
-                    // Select and copy the text
-                    textarea.select();
-                    document.execCommand('copy');
-                    
-                    // Clean up
-                    document.body.removeChild(textarea);
-                }}
+                        h1, h2 {{
+                            color: #111827;
+                            margin-bottom: 1.5rem;
+                        }}
 
-                function setupLocalEnv(companyName, username) {{
-                    const setupCmd = `cd /tmp && \\
+                        h1 {{
+                            font-size: 2rem;
+                            font-weight: 600;
+                            display: flex;
+                            align-items: center;
+                            gap: 0.75rem;
+                        }}
+
+                        h2 {{
+                            font-size: 1.25rem;
+                            font-weight: 600;
+                            margin-top: 2rem;
+                        }}
+
+                        .success-icon {{
+                            width: 32px;
+                            height: 32px;
+                            background: #22c55e;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 1.25rem;
+                        }}
+
+                        .success-message {{
+                            color: #15803d;
+                            background: #f0fdf4;
+                            padding: 1rem;
+                            border-radius: 8px;
+                            margin-bottom: 2rem;
+                            border: 1px solid #86efac;
+                        }}
+
+                        .repo-list {{
+                            list-style: none;
+                            margin: 1rem 0;
+                        }}
+
+                        .repo-list li {{
+                            padding: 1rem;
+                            background: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                            margin-bottom: 0.75rem;
+                        }}
+
+                        .repo-list li:hover {{
+                            border-color: #94a3b8;
+                        }}
+
+                        .repo-list a {{
+                            color: #2563eb;
+                            text-decoration: none;
+                            font-weight: 500;
+                        }}
+
+                        .repo-list a:hover {{
+                            text-decoration: underline;
+                        }}
+
+                        .step-container {{
+                            background: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 12px;
+                            padding: 1.5rem;
+                            margin: 1.5rem 0;
+                        }}
+
+                        .step-number {{
+                            display: inline-block;
+                            width: 24px;
+                            height: 24px;
+                            background: #2563eb;
+                            color: white;
+                            border-radius: 50%;
+                            text-align: center;
+                            line-height: 24px;
+                            font-size: 0.875rem;
+                            margin-right: 0.75rem;
+                        }}
+
+                        ol {{
+                            list-style: none;
+                            margin: 1rem 0;
+                            padding-left: 1rem;
+                        }}
+
+                        ol li {{
+                            margin-bottom: 0.5rem;
+                            color: #4b5563;
+                        }}
+
+                        button {{
+                            background: #2563eb;
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            padding: 0.875rem 1.5rem;
+                            font-size: 1rem;
+                            font-weight: 500;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                        }}
+
+                        button:hover {{
+                            background: #1d4ed8;
+                            transform: translateY(-1px);
+                        }}
+
+                        button:active {{
+                            transform: translateY(0);
+                        }}
+
+                        .status-message {{
+                            margin-top: 1rem;
+                            padding: 1rem;
+                            border-radius: 8px;
+                            background: #f0fdf4;
+                            border: 1px solid #86efac;
+                            color: #15803d;
+                            display: none;
+                        }}
+
+                        .home-link {{
+                            display: inline-block;
+                            margin-top: 2rem;
+                            color: #4b5563;
+                            text-decoration: none;
+                            padding: 0.5rem 1rem;
+                            border-radius: 6px;
+                            transition: all 0.2s ease;
+                        }}
+
+                        .home-link:hover {{
+                            background: #f3f4f6;
+                            color: #111827;
+                        }}
+
+                        @media (max-width: 640px) {{
+                            body {{
+                                padding: 1rem;
+                            }}
+
+                            .container {{
+                                padding: 1.5rem;
+                            }}
+
+                            h1 {{
+                                font-size: 1.75rem;
+                            }}
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>
+                            <span class="success-icon">✓</span>
+                            Setup Complete
+                        </h1>
+                        <p class="success-message">Successfully set up SDK configuration for {company_name}</p>
+                        
+                        <h2>Created Repositories</h2>
+                        <ul class="repo-list">
+                            <li>
+                                <strong>Configuration:</strong><br>
+                                <a href="{repo_url}" target="_blank">{repo_url}</a>
+                            </li>
+                            <li>
+                                <strong>Python SDK:</strong><br>
+                                <a href="https://github.com/{user['login']}/{company_name}-python-sdk" target="_blank">
+                                    github.com/{user['login']}/{company_name}-python-sdk
+                                </a>
+                            </li>
+                            <li>
+                                <strong>TypeScript SDK:</strong><br>
+                                <a href="https://github.com/{user['login']}/{company_name}-typescript-sdk" target="_blank">
+                                    github.com/{user['login']}/{company_name}-typescript-sdk
+                                </a>
+                            </li>
+                        </ul>
+                        
+                        <div class="step-container">
+                            <h2><span class="step-number">1</span>Install Fern API</h2>
+                            <p>To enable automatic SDK generation, please install the Fern API GitHub App:</p>
+                            <ol>
+                                <li>Click the button below to open the installation page</li>
+                                <li>Review the repository access</li>
+                                <li>Click "Install" to complete the setup</li>
+                            </ol>
+                            <a href="{installation_url}" target="_blank">
+                                <button>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 5v14M5 12h14"/>
+                                    </svg>
+                                    Install Fern API
+                                </button>
+                            </a>
+                        </div>
+
+                        <div class="step-container">
+                            <h2><span class="step-number">2</span>Setup Local Environment</h2>
+                            <p>This will prepare your local environment with:</p>
+                            <ol>
+                                <li>Clone the configuration repository</li>
+                                <li>Install Fern CLI</li>
+                                <li>Run initial setup and login</li>
+                            </ol>
+                            <button onclick="setupLocalEnv('{company_name}', '{user['login']}')">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M8 13v-1h8v1M12 12v7m-4-3l4 3 4-3"/>
+                                </svg>
+                                Setup Local Environment
+                            </button>
+                            <div id="setupStatus"></div>
+                        </div>
+
+                        <div class="step-container">
+                            <h2><span class="step-number">3</span>Generate SDKs</h2>
+                            <p>After completing Fern authentication in your terminal, generate your SDKs:</p>
+                            <button onclick="generateSDKs('{company_name}', '{user['login']}')">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 4v16m-8-8h16"/>
+                                </svg>
+                                Generate SDKs
+                            </button>
+                            <div id="generateStatus"></div>
+                        </div>
+                        
+                        <a href="/" class="home-link">← Create Another SDK</a>
+
+                        <script>
+                        function copyToClipboard(text) {{
+                            const textarea = document.createElement('textarea');
+                            textarea.value = text;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textarea);
+                        }}
+
+                        function setupLocalEnv(companyName, username) {{
+                            const setupCmd = `cd /tmp && \\
 git clone https://github.com/${{username}}/${{companyName}}-config.git && \\
 npm install -g fern-api && \\
 cd ${{companyName}}-config && \\
 fern upgrade && \\
 fern login`;
-                    
-                    copyToClipboard(setupCmd);
-                    document.getElementById('setupStatus').innerHTML = `
-                        <div style="background-color: #e8f5e9; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
-                            <p style="margin: 0 0 0.5rem 0;"><strong>✓ Command copied to clipboard!</strong></p>
-                            <p style="margin: 0; font-size: 0.9rem;">Please paste and run the command in your terminal.</p>
-                        </div>
-                    `;
-                }}
+                            
+                            copyToClipboard(setupCmd);
+                            document.getElementById('setupStatus').innerHTML = `
+                                <div class="status-message" style="display: block;">
+                                    <strong>✓ Command copied to clipboard!</strong><br>
+                                    Please paste and run the command in your terminal.
+                                </div>
+                            `;
+                        }}
 
-                function generateSDKs(companyName, username) {{
-                    const generateCmd = `cd /tmp/${{companyName}}-config && \\
+                        function generateSDKs(companyName, username) {{
+                            const generateCmd = `cd /tmp/${{companyName}}-config && \\
+fern generator upgrade && \\
 fern generate --group python-sdk && \\
 fern generate --group ts-sdk`;
-                    
-                    copyToClipboard(generateCmd);
-                    document.getElementById('generateStatus').innerHTML = `
-                        <div style="background-color: #e8f5e9; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
-                            <p style="margin: 0 0 0.5rem 0;"><strong>✓ Command copied to clipboard!</strong></p>
-                            <p style="margin: 0; font-size: 0.9rem;">Please paste and run the command in your terminal.</p>
-                        </div>
-                    `;
-                }}
-                </script>
-            </div>
+                            
+                            copyToClipboard(generateCmd);
+                            document.getElementById('generateStatus').innerHTML = `
+                                <div class="status-message" style="display: block;">
+                                    <strong>✓ Command copied to clipboard!</strong><br>
+                                    Please paste and run the command in your terminal.
+                                </div>
+                            `;
+                        }}
+                        </script>
+                    </div>
+                </body>
+            </html>
         """)
     except ValueError as e:
         return HTMLResponse(f"""
