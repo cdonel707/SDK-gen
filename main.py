@@ -49,7 +49,7 @@ sessions = {}
 async def create_repo_from_template(access_token: str, company_name: str) -> str:
     """Create a new repository from the template."""
     try:
-        g = Github(auth=access_token)  # Use auth parameter instead
+        g = Github(access_token)  # Pass token directly, not as auth parameter
         auth_user = g.get_user()
         
         # Get the template repository
