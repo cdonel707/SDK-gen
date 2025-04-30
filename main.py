@@ -18,7 +18,8 @@ import asyncio  # Add asyncio for sleep
 # Load environment variables
 load_dotenv()
 
-app = FastAPI()
+# Initialize FastAPI app
+app = FastAPI()  # Trigger Railway redeploy
 
 # CORS middleware configuration
 app.add_middleware(
