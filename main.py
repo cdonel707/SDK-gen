@@ -132,12 +132,12 @@ async def github_callback(code: str, state: str):
         # Get user info using the token in the Authorization header
         user_response = await client.get(
             GITHUB_USER_URL,
-            headers={"Authorization": f"token {access_token}"},  # Changed from Bearer to token
+            headers={"Authorization": f"token {access_token}"},
         )
         user_data = user_response.json()
         
-        # Store access token in user data
-        user_data['access_token'] = f"token {access_token}"  # Store with 'token ' prefix
+        # Store raw access token in user data (without 'token ' prefix)
+        user_data['access_token'] = access_token
 
         # Create session
         session_id = secrets.token_urlsafe(32)
