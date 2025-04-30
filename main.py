@@ -102,7 +102,7 @@ async def get_current_user(request: Request):
 async def github_auth():
     """Redirect to GitHub OAuth page."""
     state = secrets.token_urlsafe(16)
-    scopes = "repo workflow"  # Add necessary scopes
+    scopes = "repo workflow read:org"  # Add read:org scope for template access
     return RedirectResponse(
         f"{GITHUB_AUTHORIZE_URL}?client_id={GITHUB_CLIENT_ID}"
         f"&redirect_uri={RAILWAY_PUBLIC_URL}/auth/callback"
