@@ -70,15 +70,15 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
                 repo=template_repo
             )
 
-            # Delete the existing openapi.yaml file
+            # Delete the existing openapi.yaml file from the fern directory
             try:
-                contents = new_repo.get_contents("openapi.yaml")
+                contents = new_repo.get_contents("fern/openapi.yaml")
                 new_repo.delete_file(
                     path=contents.path,
                     message="Remove default OpenAPI spec",
                     sha=contents.sha
                 )
-                print("Deleted existing openapi.yaml")
+                print("Deleted existing fern/openapi.yaml")
             except GithubException as e:
                 if e.status != 404:  # Ignore if file doesn't exist
                     raise
