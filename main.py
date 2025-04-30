@@ -64,7 +64,7 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
             name=repo_name,
             description=repo_description,
             private=False,
-            template_repository=template_repo
+            repo=template_repo
         )
         
         return new_repo.html_url
