@@ -12,8 +12,8 @@ groups:
         output:
           location: pypi
           package-name: startersdk
-          github:
-            repository: looking-python-sdk
+        github:
+          repository: looking-python-sdk
         config:
           client_class_name: Starter
         smart-casing: true
