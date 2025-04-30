@@ -365,20 +365,20 @@ async def handle_submission(
         g = Github(user['access_token'])
         new_repo = g.get_repo(f"{g.get_user().login}/{company_name}-config")
         
-        # Create the OpenAPI spec file with original filename
+        # Create the OpenAPI spec file with original filename in the fern directory
         new_repo.create_file(
-            path=openapi_spec.filename,  # Use the original filename
+            path=f"fern/{openapi_spec.filename}",  # Place file in the fern directory
             message="Add OpenAPI specification",
             content=content.decode('utf-8')
         )
-        print(f"Created new spec file: {openapi_spec.filename}")
+        print(f"Created new spec file: fern/{openapi_spec.filename}")
         
         return HTMLResponse(f"""
             <div class="container">
                 <h1>Success!</h1>
                 <p class="success">Setup completed for {company_name}</p>
                 <p>Repository created: <a href="{repo_url}" target="_blank">{repo_url}</a></p>
-                <p>OpenAPI spec uploaded as {openapi_spec.filename}</p>
+                <p>OpenAPI spec uploaded as fern/{openapi_spec.filename}</p>
                 <a href="/">Submit another</a>
             </div>
         """)
