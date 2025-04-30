@@ -50,6 +50,7 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
     """Create a new repository from the template."""
     try:
         g = Github(access_token)
+        auth_user = g.get_user()
         
         # Get the template repository
         template_repo = g.get_repo(f"{TEMPLATE_OWNER}/{TEMPLATE_REPO}")
@@ -58,20 +59,23 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
         repo_name = f"{company_name}-config"
         repo_description = f"SDK configuration for {company_name}"
         
-        # Use the template repository's create_repository_from_template method
+        # Create repository from template using the correct method
         new_repo = template_repo.create_repository_from_template(
             name=repo_name,
-            owner=g.get_user().login,
             description=repo_description,
             private=False,
-            include_all_branches=True
+            owner=auth_user.login
         )
         
         return new_repo.html_url
     except GithubException as e:
         if e.status == 422:  # Repository already exists
             raise ValueError(f"A repository named '{repo_name}' already exists.")
-        raise ValueError(f"GitHub API error: {str(e)}")
+        elif e.status == 403:  # Permission denied
+            raise ValueError("Permission denied. Please ensure you have granted the necessary repository permissions.")
+        elif e.status == 404:  # Template not found
+            raise ValueError("Template repository not found. Please check the template exists and you have access to it.")
+        raise ValueError(f"GitHub API error ({e.status}): {e.data.get('message', str(e))}")
     except Exception as e:
         raise ValueError(f"Failed to create repository: {str(e)}")
 
