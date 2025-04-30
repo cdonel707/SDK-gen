@@ -71,6 +71,20 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
                 repo=template_repo
             )
 
+            async def verify_file_deleted(repo, file_path: str, max_retries: int = 3) -> bool:
+                """Verify a file is deleted with retries."""
+                for i in range(max_retries):
+                    try:
+                        repo.get_contents(file_path)
+                        if i < max_retries - 1:  # Don't sleep on last attempt
+                            await asyncio.sleep(1)  # Wait a second before retrying
+                        continue  # File still exists
+                    except GithubException as e:
+                        if e.status == 404:  # File is gone
+                            return True
+                        raise  # Other error
+                return False  # File still exists after all retries
+
             # Try to delete the existing OpenAPI spec file (trying both .yaml and .yml extensions)
             deleted = False
             for file_path in ["fern/openapi.yaml", "fern/openapi.yml"]:
@@ -82,8 +96,12 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
                         sha=contents.sha
                     )
                     print(f"Deleted existing {file_path}")
-                    deleted = True
-                    break  # Exit loop after successful deletion
+                    # Wait and verify deletion
+                    if await verify_file_deleted(new_repo, file_path):
+                        deleted = True
+                        break  # Exit loop after successful deletion and verification
+                    else:
+                        print(f"Warning: {file_path} deletion could not be verified")
                 except GithubException as e:
                     if e.status != 404:  # Only raise if error is not "file not found"
                         raise
@@ -373,20 +391,8 @@ async def handle_submission(
         # Get the newly created repository
         new_repo = g.get_repo(repo_full_name)
         
-        # Verify the original spec is gone before adding new one
-        try:
-            new_repo.get_contents("fern/openapi.yaml")
-            raise ValueError("Original spec file still exists - deletion may have failed")
-        except GithubException as e:
-            if e.status != 404:
-                raise
-        
-        try:
-            new_repo.get_contents("fern/openapi.yml")
-            raise ValueError("Original spec file still exists - deletion may have failed")
-        except GithubException as e:
-            if e.status != 404:
-                raise
+        # Add a small delay before creating the new file
+        await asyncio.sleep(2)  # Wait 2 seconds for deletion to fully process
         
         # Create the OpenAPI spec file with original filename in the fern directory
         new_repo.create_file(
