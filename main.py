@@ -1,15 +1,44 @@
-from fastapi import FastAPI, Form, UploadFile, File
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, UploadFile, File, Request, Depends, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi.middleware.cors import CORSMiddleware
 import os
 import json
 import yaml
 from pathlib import Path
+import httpx
+from dotenv import load_dotenv
+from jose import jwt
+import secrets
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI()
 
+# CORS middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# GitHub OAuth configuration
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
+GITHUB_USER_URL = "https://api.github.com/user"
+RAILWAY_PUBLIC_URL = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"
+
 # Create uploads directory if it doesn't exist
 os.makedirs("uploads", exist_ok=True)
+
+# Session management
+sessions = {}
 
 def validate_openapi(content: bytes, file_extension: str) -> dict:
     """Validate and parse OpenAPI content based on file extension."""
@@ -23,107 +52,236 @@ def validate_openapi(content: bytes, file_extension: str) -> dict:
     except (json.JSONDecodeError, yaml.YAMLError) as e:
         raise ValueError(f"Invalid {file_extension[1:].upper()} file: {str(e)}")
 
+async def get_current_user(request: Request):
+    """Get the current user from the session."""
+    session_id = request.cookies.get("session_id")
+    if not session_id or session_id not in sessions:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return sessions[session_id]
+
+@app.get("/auth/github")
+async def github_auth():
+    """Redirect to GitHub OAuth page."""
+    state = secrets.token_urlsafe(16)
+    return RedirectResponse(
+        f"{GITHUB_AUTHORIZE_URL}?client_id={GITHUB_CLIENT_ID}&redirect_uri={RAILWAY_PUBLIC_URL}/auth/callback&state={state}"
+    )
+
+@app.get("/auth/callback")
+async def github_callback(code: str, state: str):
+    """Handle GitHub OAuth callback."""
+    async with httpx.AsyncClient() as client:
+        # Exchange code for access token
+        token_response = await client.post(
+            GITHUB_TOKEN_URL,
+            data={
+                "client_id": GITHUB_CLIENT_ID,
+                "client_secret": GITHUB_CLIENT_SECRET,
+                "code": code,
+            },
+            headers={"Accept": "application/json"},
+        )
+        token_data = token_response.json()
+        access_token = token_data.get("access_token")
+
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Failed to get access token")
+
+        # Get user info
+        user_response = await client.get(
+            GITHUB_USER_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        user_data = user_response.json()
+
+        # Create session
+        session_id = secrets.token_urlsafe(32)
+        sessions[session_id] = user_data
+
+        # Redirect to home page with session cookie
+        response = RedirectResponse(url="/")
+        response.set_cookie(key="session_id", value=session_id, httponly=True)
+        return response
+
 @app.get("/", response_class=HTMLResponse)
-async def read_root():
-    return """
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>SDK Setup</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background-color: #f0f0f0;
-                }
-                .container {
-                    text-align: center;
-                    padding: 2rem;
-                    background-color: white;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    width: 80%;
-                    max-width: 600px;
-                }
-                h1 {
-                    color: #333;
-                    margin-bottom: 2rem;
-                }
-                .form-group {
-                    margin-bottom: 1rem;
-                    text-align: left;
-                }
-                label {
-                    display: block;
-                    margin-bottom: 0.5rem;
-                    color: #555;
-                }
-                input[type="text"],
-                input[type="file"] {
-                    width: 100%;
-                    padding: 0.5rem;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    box-sizing: border-box;
-                }
-                button {
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 0.5rem 1rem;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 1rem;
-                    margin-top: 1rem;
-                }
-                button:hover {
-                    background-color: #45a049;
-                }
-                .error {
-                    color: red;
-                    margin-top: 1rem;
-                }
-                .success {
-                    color: green;
-                    margin-top: 1rem;
-                }
-                .file-info {
-                    font-size: 0.9rem;
-                    color: #666;
-                    margin-top: 0.5rem;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>SDK Setup</h1>
-                <form action="/submit" method="post" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="company_name">Company Name:</label>
-                        <input type="text" id="company_name" name="company_name" required>
+async def read_root(request: Request):
+    """Show the form or login page."""
+    try:
+        user = await get_current_user(request)
+        return """
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>SDK Setup</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background-color: #f0f0f0;
+                    }
+                    .container {
+                        text-align: center;
+                        padding: 2rem;
+                        background-color: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        width: 80%;
+                        max-width: 600px;
+                    }
+                    h1 {
+                        color: #333;
+                        margin-bottom: 2rem;
+                    }
+                    .form-group {
+                        margin-bottom: 1rem;
+                        text-align: left;
+                    }
+                    label {
+                        display: block;
+                        margin-bottom: 0.5rem;
+                        color: #555;
+                    }
+                    input[type="text"],
+                    input[type="file"] {
+                        width: 100%;
+                        padding: 0.5rem;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        box-sizing: border-box;
+                    }
+                    button {
+                        background-color: #4CAF50;
+                        color: white;
+                        padding: 0.5rem 1rem;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        margin-top: 1rem;
+                    }
+                    button:hover {
+                        background-color: #45a049;
+                    }
+                    .error {
+                        color: red;
+                        margin-top: 1rem;
+                    }
+                    .success {
+                        color: green;
+                        margin-top: 1rem;
+                    }
+                    .file-info {
+                        font-size: 0.9rem;
+                        color: #666;
+                        margin-top: 0.5rem;
+                    }
+                    .user-info {
+                        text-align: right;
+                        margin-bottom: 1rem;
+                        color: #666;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="user-info">
+                        Logged in as: {user['login']}
+                        <a href="/logout" style="margin-left: 1rem; color: #666;">Logout</a>
                     </div>
-                    <div class="form-group">
-                        <label for="openapi_spec">OpenAPI Specification:</label>
-                        <input type="file" id="openapi_spec" name="openapi_spec" accept=".json,.yaml,.yml" required>
-                        <div class="file-info">Supported formats: JSON (.json), YAML (.yaml, .yml)</div>
-                    </div>
-                    <button type="submit">Submit</button>
-                </form>
-            </div>
-        </body>
-    </html>
-    """
+                    <h1>SDK Setup</h1>
+                    <form action="/submit" method="post" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="company_name">Company Name:</label>
+                            <input type="text" id="company_name" name="company_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="openapi_spec">OpenAPI Specification:</label>
+                            <input type="file" id="openapi_spec" name="openapi_spec" accept=".json,.yaml,.yml" required>
+                            <div class="file-info">Supported formats: JSON (.json), YAML (.yaml, .yml)</div>
+                        </div>
+                        <button type="submit">Submit</button>
+                    </form>
+                </div>
+            </body>
+        </html>
+        """.format(user=user)
+    except HTTPException:
+        return """
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Login Required</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background-color: #f0f0f0;
+                    }
+                    .container {
+                        text-align: center;
+                        padding: 2rem;
+                        background-color: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        width: 80%;
+                        max-width: 600px;
+                    }
+                    h1 {
+                        color: #333;
+                        margin-bottom: 2rem;
+                    }
+                    button {
+                        background-color: #24292e;
+                        color: white;
+                        padding: 0.5rem 1rem;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                    }
+                    button:hover {
+                        background-color: #1b1f23;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Login Required</h1>
+                    <p>Please log in with GitHub to continue.</p>
+                    <a href="/auth/github">
+                        <button>Login with GitHub</button>
+                    </a>
+                </div>
+            </body>
+        </html>
+        """
+
+@app.get("/logout")
+async def logout():
+    """Logout the user."""
+    response = RedirectResponse(url="/")
+    response.delete_cookie("session_id")
+    return response
 
 @app.post("/submit")
 async def handle_submission(
+    request: Request,
     company_name: str = Form(...),
     openapi_spec: UploadFile = File(...)
 ):
+    """Handle form submission."""
     try:
+        # Check authentication
+        user = await get_current_user(request)
+        
         # Get file extension
         file_extension = Path(openapi_spec.filename).suffix.lower()
         if file_extension not in ['.json', '.yaml', '.yml']:
