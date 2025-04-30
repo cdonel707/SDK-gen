@@ -69,7 +69,22 @@ async def create_repo_from_template(access_token: str, company_name: str) -> str
                 private=False,
                 repo=template_repo
             )
+
+            # Delete the existing openapi.yaml file
+            try:
+                contents = new_repo.get_contents("openapi.yaml")
+                new_repo.delete_file(
+                    path=contents.path,
+                    message="Remove default OpenAPI spec",
+                    sha=contents.sha
+                )
+                print("Deleted existing openapi.yaml")
+            except GithubException as e:
+                if e.status != 404:  # Ignore if file doesn't exist
+                    raise
+
             return new_repo.html_url
+            
         except GithubException as e:
             print(f"Detailed GitHub error: Status {e.status}, Data: {e.data}")
             raise
@@ -345,18 +360,25 @@ async def handle_submission(
 
         # Create repository from template
         repo_url = await create_repo_from_template(user['access_token'], company_name)
-
-        # Save the file with appropriate extension
-        file_path = f"uploads/{company_name}_openapi{file_extension}"
-        with open(file_path, "wb") as f:
-            f.write(content)
+        
+        # Get the newly created repository
+        g = Github(user['access_token'])
+        new_repo = g.get_repo(f"{g.get_user().login}/{company_name}-config")
+        
+        # Create the OpenAPI spec file with original filename
+        new_repo.create_file(
+            path=openapi_spec.filename,  # Use the original filename
+            message="Add OpenAPI specification",
+            content=content.decode('utf-8')
+        )
+        print(f"Created new spec file: {openapi_spec.filename}")
         
         return HTMLResponse(f"""
             <div class="container">
                 <h1>Success!</h1>
                 <p class="success">Setup completed for {company_name}</p>
                 <p>Repository created: <a href="{repo_url}" target="_blank">{repo_url}</a></p>
-                <p>OpenAPI spec saved successfully as {file_extension.upper()}.</p>
+                <p>OpenAPI spec uploaded as {openapi_spec.filename}</p>
                 <a href="/">Submit another</a>
             </div>
         """)
@@ -372,7 +394,7 @@ async def handle_submission(
         return HTMLResponse(f"""
             <div class="container">
                 <h1>Error</h1>
-                <p class="error">An error occurred: {str(e)}</p>
+                <p class="error">An unexpected error occurred: {str(e)}</p>
                 <a href="/">Try again</a>
             </div>
         """) 
