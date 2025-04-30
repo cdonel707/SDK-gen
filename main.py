@@ -14,6 +14,8 @@ import secrets
 from github import Github
 from github.GithubException import GithubException
 import asyncio  # Add asyncio for sleep
+import shutil
+import subprocess
 
 # Load environment variables
 load_dotenv()
@@ -526,7 +528,7 @@ async def handle_submission(
                 <p>OpenAPI spec uploaded as fern/{openapi_spec.filename}</p>
                 
                 <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
-                    <h2>Final Step: Install Fern API</h2>
+                    <h2>Step 1: Install Fern API</h2>
                     <p>To enable automatic SDK generation, please install the Fern API GitHub App:</p>
                     <ol style="text-align: left;">
                         <li>Click the button below to open the installation page</li>
@@ -537,8 +539,85 @@ async def handle_submission(
                         Install Fern API
                     </a>
                 </div>
+
+                <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px;">
+                    <h2>Step 2: Setup Fern CLI</h2>
+                    <p>Once you've installed the GitHub App, click below to setup the Fern CLI:</p>
+                    <button id="setupFernBtn" onclick="setupFern('{company_name}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        Setup Fern CLI
+                    </button>
+                    <div id="fernSetupStatus" style="margin-top: 1rem;"></div>
+                </div>
+
+                <div id="generateStep" style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px; display: none;">
+                    <h2>Step 3: Generate SDKs</h2>
+                    <p>After completing Fern authentication, click below to generate your SDKs:</p>
+                    <button id="generateSDKsBtn" onclick="generateSDKs('{company_name}')" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: #0969da; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        Generate SDKs
+                    </button>
+                    <div id="generateStatus" style="margin-top: 1rem;"></div>
+                </div>
                 
                 <a href="/" style="display: inline-block; margin-top: 2rem;">Create Another SDK</a>
+
+                <script>
+                async function setupFern(companyName) {{
+                    const setupBtn = document.getElementById('setupFernBtn');
+                    const statusDiv = document.getElementById('fernSetupStatus');
+                    setupBtn.disabled = true;
+                    statusDiv.innerHTML = 'Setting up Fern CLI...';
+                    
+                    try {{
+                        const response = await fetch('/setup-fern', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json'
+                            }},
+                            body: JSON.stringify({{ company_name: companyName }})
+                        }});
+                        
+                        if (response.ok) {{
+                            statusDiv.innerHTML = 'Fern CLI setup complete! Please complete authentication in the opened window.';
+                            document.getElementById('generateStep').style.display = 'block';
+                        }} else {{
+                            const error = await response.text();
+                            statusDiv.innerHTML = `Error: ${{error}}`;
+                            setupBtn.disabled = false;
+                        }}
+                    }} catch (error) {{
+                        statusDiv.innerHTML = `Error: ${{error.message}}`;
+                        setupBtn.disabled = false;
+                    }}
+                }}
+
+                async function generateSDKs(companyName) {{
+                    const generateBtn = document.getElementById('generateSDKsBtn');
+                    const statusDiv = document.getElementById('generateStatus');
+                    generateBtn.disabled = true;
+                    statusDiv.innerHTML = 'Generating SDKs...';
+                    
+                    try {{
+                        const response = await fetch('/generate-sdks', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json'
+                            }},
+                            body: JSON.stringify({{ company_name: companyName }})
+                        }});
+                        
+                        if (response.ok) {{
+                            statusDiv.innerHTML = 'SDKs generated successfully!';
+                        }} else {{
+                            const error = await response.text();
+                            statusDiv.innerHTML = `Error: ${{error}}`;
+                            generateBtn.disabled = false;
+                        }}
+                    }} catch (error) {{
+                        statusDiv.innerHTML = `Error: ${{error.message}}`;
+                        generateBtn.disabled = false;
+                    }}
+                }}
+                </script>
             </div>
         """)
     except ValueError as e:
@@ -556,4 +635,84 @@ async def handle_submission(
                 <p class="error">An unexpected error occurred: {str(e)}</p>
                 <a href="/">Try again</a>
             </div>
-        """) 
+        """)
+
+@app.post("/setup-fern")
+async def setup_fern(request: Request, data: dict):
+    """Setup Fern CLI and initiate authentication."""
+    try:
+        # Check authentication
+        user = await get_current_user(request)
+        company_name = data.get('company_name')
+        if not company_name:
+            raise HTTPException(status_code=400, detail="Company name is required")
+
+        # Create a temporary directory for the repository
+        repo_dir = f"/tmp/{company_name}-config"
+        if os.path.exists(repo_dir):
+            shutil.rmtree(repo_dir)  # Clean up any existing directory
+        os.makedirs(repo_dir)
+
+        try:
+            # Install Fern CLI globally
+            subprocess.run(['npm', 'install', '-g', 'fern-api'], check=True)
+            
+            # Clone the repository
+            repo_url = f"https://github.com/{user['login']}/{company_name}-config.git"
+            subprocess.run(['git', 'clone', repo_url, repo_dir], check=True)
+            
+            # Change to repository directory and run fern upgrade
+            os.chdir(repo_dir)
+            subprocess.run(['fern', 'upgrade'], check=True)
+            
+            # Start fern login process
+            process = subprocess.Popen(['fern', 'login'], 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE)
+            
+            # Store the process information for later use
+            request.session['fern_process'] = process
+            request.session['repo_dir'] = repo_dir
+            
+            return {"status": "success", "message": "Fern CLI setup initiated"}
+            
+        except subprocess.CalledProcessError as e:
+            raise HTTPException(status_code=500, 
+                              detail=f"Command failed: {e.cmd}. Output: {e.output}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate-sdks")
+async def generate_sdks(request: Request, data: dict):
+    """Generate SDKs using Fern CLI."""
+    try:
+        # Check authentication
+        user = await get_current_user(request)
+        company_name = data.get('company_name')
+        if not company_name:
+            raise HTTPException(status_code=400, detail="Company name is required")
+
+        # Get the repository directory from session
+        repo_dir = request.session.get('repo_dir')
+        if not repo_dir:
+            raise HTTPException(status_code=400, detail="Fern setup not completed")
+
+        # Change to repository directory
+        os.chdir(repo_dir)
+
+        # Generate TypeScript SDK
+        subprocess.run(['fern', 'generate', '--group', 'ts-sdk'], check=True)
+        
+        # Generate Python SDK
+        subprocess.run(['fern', 'generate', '--group', 'python-sdk'], check=True)
+
+        # Clean up
+        shutil.rmtree(repo_dir)
+        
+        return {"status": "success", "message": "SDKs generated successfully"}
+            
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, 
+                          detail=f"Command failed: {e.cmd}. Output: {e.output}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 
