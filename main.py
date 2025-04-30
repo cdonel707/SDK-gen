@@ -87,10 +87,35 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
 
             # Try to delete the existing OpenAPI spec file (trying both .yaml and .yml extensions)
             deleted = False
+            max_retries = 3
+            
+            async def find_spec_file(repo, file_path: str) -> tuple[bool, any]:
+                """Try to find a file with retries."""
+                for attempt in range(max_retries):
+                    try:
+                        print(f"Attempt {attempt + 1}/{max_retries} to find {file_path}")
+                        contents = repo.get_contents(file_path)
+                        return True, contents
+                    except GithubException as e:
+                        if e.status != 404:  # Only retry on 404
+                            raise
+                        if attempt < max_retries - 1:
+                            print(f"File not found, waiting before retry...")
+                            await asyncio.sleep(2)  # Wait 2 seconds between attempts
+                return False, None
+
             for file_path in ["fern/openapi.yaml", "fern/openapi.yml"]:
                 try:
-                    print(f"Attempting to get contents of {file_path}")
-                    contents = new_repo.get_contents(file_path)
+                    found, contents = await find_spec_file(new_repo, file_path)
+                    if not found:
+                        print(f"File {file_path} not found after {max_retries} attempts")
+                        continue
+
+                    # Handle if contents is a list (directory)
+                    if isinstance(contents, list):
+                        print(f"Warning: {file_path} is a directory containing {len(contents)} items")
+                        continue
+                        
                     print(f"Found file {file_path} with SHA: {contents.sha}")
                     
                     print(f"Attempting to delete {file_path}")
@@ -112,10 +137,13 @@ async def create_repo_from_template(access_token: str, company_name: str) -> tup
                     if e.status != 404:  # Only raise if error is not "file not found"
                         print(f"GitHub error for {file_path}: Status {e.status}, Data: {e.data}")
                         raise
-                    print(f"File {file_path} not found (404), trying next extension...")
+                    print(f"Unexpected error for {file_path}")
 
             if not deleted:
                 print("Warning: Could not find original spec file to delete")
+
+            # Add a longer delay before creating the new file
+            await asyncio.sleep(5)  # Wait 5 seconds before creating new file
 
             return new_repo.html_url, g, new_repo.full_name
             
