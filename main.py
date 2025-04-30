@@ -11,6 +11,8 @@ import httpx
 from dotenv import load_dotenv
 from jose import jwt
 import secrets
+from github import Github
+from github.GithubException import GithubException
 
 # Load environment variables
 load_dotenv()
@@ -34,11 +36,43 @@ GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_USER_URL = "https://api.github.com/user"
 RAILWAY_PUBLIC_URL = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"
 
+# GitHub Template Configuration
+TEMPLATE_OWNER = "fern-api"
+TEMPLATE_REPO = "sdk-starter"
+
 # Create uploads directory if it doesn't exist
 os.makedirs("uploads", exist_ok=True)
 
 # Session management
 sessions = {}
+
+async def create_repo_from_template(access_token: str, company_name: str) -> str:
+    """Create a new repository from the template."""
+    try:
+        g = Github(access_token)
+        
+        # Get the template repository
+        template_repo = g.get_repo(f"{TEMPLATE_OWNER}/{TEMPLATE_REPO}")
+        
+        # Create a new repository from the template
+        repo_name = f"{company_name}-config"
+        repo_description = f"SDK configuration for {company_name}"
+        
+        # Create repository from template
+        new_repo = g.get_user().create_repo_from_template(
+            name=repo_name,
+            template_repository=template_repo,
+            description=repo_description,
+            private=False
+        )
+        
+        return new_repo.html_url
+    except GithubException as e:
+        if e.status == 422:  # Repository already exists
+            raise ValueError(f"A repository named '{repo_name}' already exists.")
+        raise ValueError(f"GitHub API error: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Failed to create repository: {str(e)}")
 
 def validate_openapi(content: bytes, file_extension: str) -> dict:
     """Validate and parse OpenAPI content based on file extension."""
@@ -93,6 +127,9 @@ async def github_callback(code: str, state: str):
             headers={"Authorization": f"Bearer {access_token}"},
         )
         user_data = user_response.json()
+        
+        # Store access token in user data
+        user_data['access_token'] = access_token
 
         # Create session
         session_id = secrets.token_urlsafe(32)
@@ -292,6 +329,9 @@ async def handle_submission(
         content = await openapi_spec.read()
         spec_data = validate_openapi(content, file_extension)
 
+        # Create repository from template
+        repo_url = await create_repo_from_template(user['access_token'], company_name)
+
         # Save the file with appropriate extension
         file_path = f"uploads/{company_name}_openapi{file_extension}"
         with open(file_path, "wb") as f:
@@ -300,7 +340,8 @@ async def handle_submission(
         return HTMLResponse(f"""
             <div class="container">
                 <h1>Success!</h1>
-                <p class="success">Received submission for {company_name}</p>
+                <p class="success">Setup completed for {company_name}</p>
+                <p>Repository created: <a href="{repo_url}" target="_blank">{repo_url}</a></p>
                 <p>OpenAPI spec saved successfully as {file_extension.upper()}.</p>
                 <a href="/">Submit another</a>
             </div>
