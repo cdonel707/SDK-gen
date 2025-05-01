@@ -184,6 +184,30 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                     sha=generators_yml.sha
                 )
                 print("Updated generators.yml with SDK repository names and spec filename")
+
+                # Update fern.config.json with the company name
+                try:
+                    fern_config = new_repo.get_contents("fern/fern.config.json")
+                    config_content = json.loads(fern_config.decoded_content.decode('utf-8'))
+                    
+                    # Update the organization name - remove spaces and special characters, convert to lowercase
+                    org_name = ''.join(c.lower() for c in company_name if c.isalnum())
+                    config_content['organization'] = org_name
+                    
+                    # Convert back to JSON string with proper formatting
+                    updated_config = json.dumps(config_content, indent=2)
+                    
+                    new_repo.update_file(
+                        path="fern/fern.config.json",
+                        message="Update organization name in fern.config.json",
+                        content=updated_config,
+                        sha=fern_config.sha
+                    )
+                    print(f"Updated fern.config.json with organization name: {org_name}")
+                except GithubException as e:
+                    print(f"Warning: Failed to update fern.config.json: {str(e)}")
+                    # Don't raise an exception here as the main functionality succeeded
+
             except GithubException as e:
                 print(f"Warning: Failed to update generators.yml: {str(e)}")
                 # Don't raise an exception here as the main functionality succeeded
