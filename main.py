@@ -16,6 +16,7 @@ from github.GithubException import GithubException
 import asyncio  # Add asyncio for sleep
 import shutil
 import subprocess
+import random  # Add import for random number generation
 
 # Load environment variables
 load_dotenv()
@@ -191,7 +192,10 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                     config_content = json.loads(fern_config.decoded_content.decode('utf-8'))
                     
                     # Update the organization name - remove spaces and special characters, convert to lowercase
-                    org_name = ''.join(c.lower() for c in company_name if c.isalnum())
+                    # and add random 6 digits at the end
+                    base_name = ''.join(c.lower() for c in company_name if c.isalnum())
+                    random_digits = str(random.randint(100000, 999999))
+                    org_name = f"{base_name}{random_digits}"
                     config_content['organization'] = org_name
                     
                     # Convert back to JSON string with proper formatting
