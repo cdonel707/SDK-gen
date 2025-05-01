@@ -70,7 +70,7 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
             new_repo = auth_user.create_repo_from_template(
                 name=repo_name,
                 description=repo_description,
-                private=False,
+                private=True,
                 repo=template_repo
             )
 
@@ -196,7 +196,7 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 python_repo = auth_user.create_repo(
                     name=python_repo_name,
                     description=f"Python SDK for {company_name} API",
-                    private=False,
+                    private=True,
                     auto_init=True  # Initialize with README
                 )
                 print(f"Created Python SDK repository: {python_repo_name}")
@@ -207,7 +207,7 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 typescript_repo = auth_user.create_repo(
                     name=typescript_repo_name,
                     description=f"TypeScript SDK for {company_name} API",
-                    private=False,
+                    private=True,
                     auto_init=True  # Initialize with README
                 )
                 print(f"Created TypeScript SDK repository: {typescript_repo_name}")
