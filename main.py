@@ -165,8 +165,8 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 generators_yml = new_repo.get_contents("fern/generators.yml")
                 current_content = generators_yml.decoded_content.decode('utf-8')
                 
-                # Replace the commented repository lines with uncommented versions using the company name
-                # and update the OpenAPI spec filename
+                # Replace the commented repository lines with uncommented versions using the company name,
+                # update the OpenAPI spec filename, and update package names
                 updated_content = current_content.replace(
                     '    - openapi: openapi.yaml',
                     f'    - openapi: {spec_file_name}'
@@ -176,6 +176,15 @@ async def create_repo_from_template(access_token: str, company_name: str, spec_f
                 ).replace(
                     '          # github:\n          #   repository: fern-demo/starter-typescript-sdk',
                     f'        github:\n          repository: {auth_user.login}/{company_name}-typescript-sdk'
+                ).replace(
+                    'package-name: startersdk',
+                    f'package-name: {company_name.lower()}-sdk'
+                ).replace(
+                    'pypi-package-name: startersdk',
+                    f'pypi-package-name: {company_name.lower()}-sdk'
+                ).replace(
+                    'npm-package-name: startersdk',
+                    f'npm-package-name: {company_name.lower()}-sdk'
                 )
                 
                 new_repo.update_file(
@@ -1395,7 +1404,6 @@ fern login`;
 
                         function generateSDKs(companyName, username) {{
                             const generateCmd = `cd /tmp/${{companyName}}-config && \\
-fern generator upgrade && \\
 fern generate --group python-sdk && \\
 fern generate --group ts-sdk`;
                             
