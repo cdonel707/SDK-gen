@@ -633,12 +633,23 @@ async def read_root(request: Request):
                             <div class="form-group">
                                 <label for="repository_select">Select Repositories</label>
                                 <div style="position: relative;">
-                                    <input 
-                                        type="text" 
-                                        id="repository_search" 
-                                        placeholder="Search repositories..."
-                                        style="margin-bottom: 0.5rem;"
-                                    >
+                                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <input 
+                                            type="text" 
+                                            id="repository_search" 
+                                            placeholder="Search repositories..."
+                                            style="flex: 1; margin-bottom: 0;"
+                                        >
+                                        <button 
+                                            type="button" 
+                                            id="refresh_repos" 
+                                            onclick="refreshRepositories()"
+                                            style="width: auto; padding: 0.75rem; background: #6b7280; margin: 0;"
+                                            title="Refresh repositories list"
+                                        >
+                                            ↻
+                                        </button>
+                                    </div>
                                     <div id="repository_dropdown"></div>
                                 </div>
                                 <div id="selected_repos" style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
@@ -668,53 +679,172 @@ async def read_root(request: Request):
                 <script>
                 let userRepositories = [];
                 let selectedRepositories = [];
+                let repositoriesLoaded = false;
+                let isLoadingRepositories = false;
 
-                window.addEventListener('load', function() {{
-                    loadUserRepositories();
+                // Initialize everything when DOM is ready
+                document.addEventListener('DOMContentLoaded', function() {{
+                    initializeRepositorySearch();
                 }});
 
-                async function loadUserRepositories() {{
-                    try {{
-                        console.log('Loading repositories...');
-                        const response = await fetch('/api/repositories');
-                        
-                        if (!response.ok) {{
-                            throw new Error(`HTTP error! status: ${{response.status}}`);
-                        }}
-                        
-                        const repos = await response.json();
-                        userRepositories = repos;
-                        console.log('Loaded repositories:', repos.length, repos);
-                        
-                        // Show a message if no repositories found
-                        if (repos.length === 0) {{
-                            console.log('No repositories found with admin access');
-                        }}
-                    }} catch (error) {{
-                        console.error('Failed to load repositories:', error);
-                        // Show error message to user
-                        const searchInput = document.getElementById('repository_search');
-                        if (searchInput) {{
-                            searchInput.placeholder = 'Error loading repositories - check console';
-                        }}
+                // Also ensure repositories are loaded when page becomes visible
+                document.addEventListener('visibilitychange', function() {{
+                    if (!document.hidden && !repositoriesLoaded && !isLoadingRepositories) {{
+                        console.log('Page became visible, loading repositories...');
+                        loadUserRepositories();
                     }}
+                }});
+
+                // Force refresh on window focus as well
+                window.addEventListener('focus', function() {{
+                    if (!repositoriesLoaded && !isLoadingRepositories) {{
+                        console.log('Window focused, loading repositories...');
+                        loadUserRepositories();
+                    }}
+                }});
+
+                async function initializeRepositorySearch() {{
+                    const searchInput = document.getElementById('repository_search');
+                    if (!searchInput) return;
+                    
+                    // Set up search input event listener
+                    searchInput.addEventListener('input', function(e) {{
+                        console.log('Search input changed:', e.target.value);
+                        handleRepositorySearch(e);
+                    }});
+                    
+                    // Add focus event to load repositories if not already loaded
+                    searchInput.addEventListener('focus', function() {{
+                        console.log('Search input focused, checking repositories...');
+                        if (!repositoriesLoaded && !isLoadingRepositories) {{
+                            loadUserRepositories();
+                        }}
+                    }});
+                    
+                    // Load repositories immediately
+                    await loadUserRepositories();
                 }}
 
-                document.addEventListener('DOMContentLoaded', function() {{
-                    const searchInput = document.getElementById('repository_search');
-                    if (searchInput) {{
-                        searchInput.addEventListener('input', function(e) {{
-                            console.log('Search input changed:', e.target.value);
-                            handleRepositorySearch(e);
-                        }});
+                async function loadUserRepositories(retryCount = 3) {{
+                    if (isLoadingRepositories) {{
+                        console.log('Already loading repositories, skipping...');
+                        return;
                     }}
-                }});
+                    
+                    isLoadingRepositories = true;
+                    const searchInput = document.getElementById('repository_search');
+                    
+                    // Show loading state
+                    if (searchInput) {{
+                        const originalPlaceholder = searchInput.placeholder;
+                        searchInput.placeholder = 'Loading repositories...';
+                        searchInput.disabled = true;
+                    }}
+                    
+                    for (let attempt = 1; attempt <= retryCount; attempt++) {{
+                        try {{
+                            console.log(`Loading repositories... (attempt ${{attempt}}/${{retryCount}})`);
+                            const response = await fetch('/api/repositories', {{
+                                method: 'GET',
+                                headers: {{
+                                    'Cache-Control': 'no-cache'
+                                }}
+                            }});
+                            
+                            if (!response.ok) {{
+                                throw new Error(`HTTP error! status: ${{response.status}}`);
+                            }}
+                            
+                            const repos = await response.json();
+                            userRepositories = repos;
+                            repositoriesLoaded = true;
+                            console.log('Successfully loaded repositories:', repos.length, repos);
+                            
+                            // Update UI to ready state
+                            if (searchInput) {{
+                                searchInput.disabled = false;
+                                if (repos.length === 0) {{
+                                    searchInput.placeholder = 'No repositories found with admin access';
+                                }} else {{
+                                    searchInput.placeholder = 'Search repositories...';
+                                }}
+                            }}
+                            
+                            isLoadingRepositories = false;
+                            return; // Success, exit retry loop
+                            
+                        }} catch (error) {{
+                            console.error(`Failed to load repositories (attempt ${{attempt}}):`, error);
+                            
+                            if (attempt === retryCount) {{
+                                // Final attempt failed
+                                if (searchInput) {{
+                                    searchInput.placeholder = 'Error loading repositories - click to retry';
+                                    searchInput.disabled = false;
+                                    searchInput.style.cursor = 'pointer';
+                                    
+                                    // Add click handler to retry
+                                    const retryHandler = function() {{
+                                        console.log('Retrying repository load...');
+                                        searchInput.removeEventListener('click', retryHandler);
+                                        searchInput.style.cursor = '';
+                                        repositoriesLoaded = false;
+                                        isLoadingRepositories = false;
+                                        loadUserRepositories();
+                                    }};
+                                    searchInput.addEventListener('click', retryHandler);
+                                }}
+                            }} else {{
+                                // Wait before retry (exponential backoff)
+                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                            }}
+                        }}
+                    }}
+                    
+                    isLoadingRepositories = false;
+                }}
+
+                function refreshRepositories() {{
+                    console.log('Manually refreshing repositories...');
+                    repositoriesLoaded = false;
+                    isLoadingRepositories = false;
+                    userRepositories = [];
+                    
+                    // Clear search and dropdown
+                    const searchInput = document.getElementById('repository_search');
+                    const dropdown = document.getElementById('repository_dropdown');
+                    
+                    if (searchInput) {{
+                        searchInput.value = '';
+                    }}
+                    if (dropdown) {{
+                        dropdown.style.display = 'none';
+                    }}
+                    
+                    // Reload repositories
+                    loadUserRepositories();
+                }}
 
                 function handleRepositorySearch(e) {{
                     const searchTerm = e.target.value.toLowerCase();
                     const dropdown = document.getElementById('repository_dropdown');
                     
-                    console.log('Searching for:', searchTerm, 'Total repos:', userRepositories.length);
+                    console.log('Searching for:', searchTerm, 'Total repos:', userRepositories.length, 'Loaded:', repositoriesLoaded);
+                    
+                    // If repositories aren't loaded yet, try to load them
+                    if (!repositoriesLoaded && !isLoadingRepositories) {{
+                        console.log('Repositories not loaded, loading now...');
+                        loadUserRepositories();
+                        dropdown.innerHTML = '<div class="repo-item" style="color: #6b7280; font-style: italic;">Loading repositories...</div>';
+                        dropdown.style.display = 'block';
+                        return;
+                    }}
+                    
+                    if (isLoadingRepositories) {{
+                        dropdown.innerHTML = '<div class="repo-item" style="color: #6b7280; font-style: italic;">Loading repositories...</div>';
+                        dropdown.style.display = 'block';
+                        return;
+                    }}
                     
                     if (searchTerm.length === 0) {{
                         dropdown.style.display = 'none';
@@ -731,7 +861,10 @@ async def read_root(request: Request):
                     console.log('Filtered repos:', filteredRepos.length, filteredRepos);
 
                     if (filteredRepos.length === 0) {{
-                        dropdown.innerHTML = '<div class="repo-item" style="color: #6b7280; font-style: italic;">No repositories found</div>';
+                        const message = userRepositories.length === 0 
+                            ? 'No repositories available' 
+                            : 'No matching repositories found';
+                        dropdown.innerHTML = `<div class="repo-item" style="color: #6b7280; font-style: italic;">${{message}}</div>`;
                         dropdown.style.display = 'block';
                         return;
                     }}
@@ -1108,6 +1241,12 @@ async def handle_submission(
 
                         button:active {{
                             transform: translateY(0);
+                        }}
+
+                        #refresh_repos:hover {{
+                            background: #4b5563 !important;
+                            transform: rotate(180deg);
+                            transition: all 0.3s ease;
                         }}
 
                         .status-message {{
