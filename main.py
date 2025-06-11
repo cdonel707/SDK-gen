@@ -348,7 +348,10 @@ async def read_root(request: Request):
     """Show the form or login page."""
     try:
         user = await get_current_user(request)
-        html_content = """
+        avatar_url = user.get('avatar_url', f'https://github.com/identicons/{user["login"]}')
+        user_login = user['login']
+        
+        html_content = f"""
         <!DOCTYPE html>
         <html>
             <head>
@@ -441,6 +444,26 @@ async def read_root(request: Request):
                         background: rgba(37, 99, 235, 0.05);
                     }}
 
+                    textarea {{
+                        width: 100%;
+                        padding: 0.75rem 1rem;
+                        border: 1px solid #d1d5db;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        transition: all 0.2s ease;
+                        background: #f9fafb;
+                        min-height: 100px;
+                        resize: vertical;
+                        font-family: inherit;
+                    }}
+
+                    textarea:focus {{
+                        outline: none;
+                        border-color: #2563eb;
+                        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+                        background: white;
+                    }}
+
                     .file-info {{
                         font-size: 0.875rem;
                         color: #6b7280;
@@ -469,6 +492,52 @@ async def read_root(request: Request):
 
                     button:active {{
                         transform: translateY(0);
+                    }}
+
+                    #repository_dropdown {{
+                        display: none;
+                        position: absolute;
+                        z-index: 1000;
+                        width: 100%;
+                        max-height: 200px;
+                        overflow-y: auto;
+                        background: white;
+                        border: 1px solid #d1d5db;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    }}
+
+                    .repo-item {{
+                        padding: 0.75rem;
+                        cursor: pointer;
+                        border-bottom: 1px solid #f3f4f6;
+                    }}
+
+                    .repo-item:hover {{
+                        background: #f9fafb;
+                    }}
+
+                    .repo-tag {{
+                        background: #dbeafe;
+                        color: #1e40af;
+                        padding: 0.25rem 0.75rem;
+                        border-radius: 1rem;
+                        font-size: 0.875rem;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        margin: 0.25rem;
+                    }}
+
+                    .repo-tag button {{
+                        background: none;
+                        border: none;
+                        color: #1e40af;
+                        cursor: pointer;
+                        padding: 0;
+                        font-size: 1rem;
+                        width: auto;
+                        margin: 0;
                     }}
 
                     .user-info {{
@@ -525,8 +594,8 @@ async def read_root(request: Request):
             <body>
                 <div class="container">
                     <div class="user-info">
-                        <img src="USER_AVATAR" alt="Avatar" class="user-avatar">
-                        <span class="user-name">USER_LOGIN</span>
+                        <img src="{avatar_url}" alt="Avatar" class="user-avatar">
+                        <span class="user-name">{user_login}</span>
                         <a href="/logout">Logout</a>
                     </div>
                     <h1>SDK Setup</h1>
@@ -557,7 +626,7 @@ async def read_root(request: Request):
                         <button type="submit">Generate SDK</button>
                     </form>
                     
-                    <!-- New Repository Access Management Section -->
+                    <!-- Repository Access Management Section -->
                     <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
                         <h1 style="font-size: 1.5rem; margin-bottom: 1.5rem;">Repository Access Management</h1>
                         <form id="accessForm" style="margin-bottom: 2rem;">
@@ -570,12 +639,9 @@ async def read_root(request: Request):
                                         placeholder="Search repositories..."
                                         style="margin-bottom: 0.5rem;"
                                     >
-                                    <div id="repository_dropdown" style="display: none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; background: white; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                                        <!-- Repositories will be populated here -->
-                                    </div>
+                                    <div id="repository_dropdown"></div>
                                 </div>
                                 <div id="selected_repos" style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                                    <!-- Selected repositories will appear here as tags -->
                                 </div>
                             </div>
                             <div class="form-group">
@@ -584,7 +650,6 @@ async def read_root(request: Request):
                                     id="github_usernames" 
                                     name="github_usernames" 
                                     placeholder="Enter GitHub usernames separated by commas (e.g., user1, user2, user3)"
-                                    style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; transition: all 0.2s ease; background: #f9fafb; min-height: 100px; resize: vertical; font-family: inherit;"
                                     required
                                 ></textarea>
                                 <div class="file-info">
@@ -596,7 +661,6 @@ async def read_root(request: Request):
                             </button>
                         </form>
                         <div id="accessResults" style="margin-top: 1rem;">
-                            <!-- Results will appear here -->
                         </div>
                     </div>
                 </div>
@@ -605,154 +669,147 @@ async def read_root(request: Request):
                 let userRepositories = [];
                 let selectedRepositories = [];
 
-                // Load user repositories on page load
-                window.addEventListener('load', function() {
+                window.addEventListener('load', function() {{
                     loadUserRepositories();
-                });
+                }});
 
-                async function loadUserRepositories() {
-                    try {
+                async function loadUserRepositories() {{
+                    try {{
                         const response = await fetch('/api/repositories');
                         const repos = await response.json();
                         userRepositories = repos;
                         console.log('Loaded repositories:', repos.length);
-                    } catch (error) {
+                    }} catch (error) {{
                         console.error('Failed to load repositories:', error);
-                    }
-                }
+                    }}
+                }}
 
-                // Repository search and selection functionality
-                document.getElementById('repository_search').addEventListener('input', function(e) {
+                document.getElementById('repository_search').addEventListener('input', function(e) {{
                     const searchTerm = e.target.value.toLowerCase();
                     const dropdown = document.getElementById('repository_dropdown');
                     
-                    if (searchTerm.length === 0) {
+                    if (searchTerm.length === 0) {{
                         dropdown.style.display = 'none';
                         return;
-                    }
+                    }}
 
                     const filteredRepos = userRepositories.filter(repo => 
                         repo.name.toLowerCase().includes(searchTerm) && 
                         !selectedRepositories.some(selected => selected.id === repo.id)
                     );
 
-                    if (filteredRepos.length === 0) {
+                    if (filteredRepos.length === 0) {{
                         dropdown.style.display = 'none';
                         return;
-                    }
+                    }}
 
-                    dropdown.innerHTML = filteredRepos.map(repo => `
-                        <div onclick="selectRepository(${{repo.id}}, '${{repo.name}}')" 
-                             style="padding: 0.75rem; cursor: pointer; border-bottom: 1px solid #f3f4f6;">
+                    dropdown.innerHTML = filteredRepos.map(repo => 
+                        `<div class="repo-item" onclick="selectRepository(${{repo.id}})">
                             <strong>${{repo.name}}</strong>
                             <div style="font-size: 0.875rem; color: #6b7280;">${{repo.description || 'No description'}}</div>
-                        </div>
-                    `).join('');
+                        </div>`
+                    ).join('');
                     
                     dropdown.style.display = 'block';
-                });
+                }});
 
-                function selectRepository(repoId, repoName) {
+                function selectRepository(repoId) {{
                     const repo = userRepositories.find(r => r.id === repoId);
-                    if (repo && !selectedRepositories.some(selected => selected.id === repoId)) {
+                    if (repo && !selectedRepositories.some(selected => selected.id === repoId)) {{
                         selectedRepositories.push(repo);
                         updateSelectedReposDisplay();
                         document.getElementById('repository_search').value = '';
                         document.getElementById('repository_dropdown').style.display = 'none';
-                    }
-                }
+                    }}
+                }}
 
-                function removeRepository(repoId) {
+                function removeRepository(repoId) {{
                     selectedRepositories = selectedRepositories.filter(repo => repo.id !== repoId);
                     updateSelectedReposDisplay();
-                }
+                }}
 
-                function updateSelectedReposDisplay() {
+                function updateSelectedReposDisplay() {{
                     const container = document.getElementById('selected_repos');
-                    container.innerHTML = selectedRepositories.map(repo => `
-                        <span style="background: #dbeafe; color: #1e40af; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    container.innerHTML = selectedRepositories.map(repo => 
+                        `<span class="repo-tag">
                             ${{repo.name}}
-                            <button onclick="removeRepository(${{repo.id}})" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; font-size: 1rem;">×</button>
-                        </span>
-                    `).join('');
-                }
+                            <button onclick="removeRepository(${{repo.id}})">×</button>
+                        </span>`
+                    ).join('');
+                }}
 
-                // Hide dropdown when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!e.target.closest('#repository_search') && !e.target.closest('#repository_dropdown')) {
+                document.addEventListener('click', function(e) {{
+                    if (!e.target.closest('#repository_search') && !e.target.closest('#repository_dropdown')) {{
                         document.getElementById('repository_dropdown').style.display = 'none';
-                    }
-                });
+                    }}
+                }});
 
-                async function addRepoAccess() {
+                async function addRepoAccess() {{
                     const usernames = document.getElementById('github_usernames').value.trim();
                     const resultsDiv = document.getElementById('accessResults');
                     
-                    if (selectedRepositories.length === 0) {
+                    if (selectedRepositories.length === 0) {{
                         resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please select at least one repository.</div>';
                         return;
-                    }
+                    }}
                     
-                    if (!usernames) {
+                    if (!usernames) {{
                         resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please enter at least one GitHub username.</div>';
                         return;
-                    }
+                    }}
 
                     resultsDiv.innerHTML = '<div style="color: #2563eb; background: #eff6ff; padding: 1rem; border-radius: 8px; border: 1px solid #bfdbfe;">Processing...</div>';
 
-                    try {
-                        const response = await fetch('/api/add-repo-access', {
+                    try {{
+                        const response = await fetch('/api/add-repo-access', {{
                             method: 'POST',
-                            headers: {
+                            headers: {{
                                 'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
+                            }},
+                            body: JSON.stringify({{
                                 repositories: selectedRepositories.map(repo => repo.full_name),
                                 usernames: usernames.split(',').map(u => u.trim()).filter(u => u.length > 0)
-                            })
-                        });
+                            }})
+                        }});
 
                         const result = await response.json();
                         displayAccessResults(result);
-                    } catch (error) {
+                    }} catch (error) {{
                         resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">An error occurred. Please try again.</div>';
-                    }
-                }
+                    }}
+                }}
 
-                function displayAccessResults(results) {
+                function displayAccessResults(results) {{
                     const resultsDiv = document.getElementById('accessResults');
                     let html = '<div style="margin-top: 1rem;">';
                     
-                    results.forEach(result => {
+                    results.forEach(result => {{
                         const isSuccess = result.success;
                         const bgColor = isSuccess ? '#f0fdf4' : '#fef2f2';
                         const borderColor = isSuccess ? '#86efac' : '#fecaca';
                         const textColor = isSuccess ? '#15803d' : '#dc2626';
                         const icon = isSuccess ? '✓' : '✗';
                         
-                        html += `
-                            <div style="background: ${{bgColor}}; border: 1px solid ${{borderColor}}; color: ${{textColor}}; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                                <strong>${{icon}} ${{result.repository}}</strong> - ${{result.username}}: ${{result.message}}
-                            </div>
-                        `;
-                    });
+                        html += `<div style="background: ${{bgColor}}; border: 1px solid ${{borderColor}}; color: ${{textColor}}; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem;">
+                            <strong>${{icon}} ${{result.repository}}</strong> - ${{result.username}}: ${{result.message}}
+                        </div>`;
+                    }});
                     
                     html += '</div>';
                     resultsDiv.innerHTML = html;
                     
-                    // Clear form on success
-                    if (results.some(r => r.success)) {
-                        setTimeout(() => {
+                    if (results.some(r => r.success)) {{
+                        setTimeout(() => {{
                             document.getElementById('github_usernames').value = '';
                             selectedRepositories = [];
                             updateSelectedReposDisplay();
-                        }, 3000);
-                    }
-                }
+                        }}, 3000);
+                    }}
+                }}
                 </script>
             </body>
         </html>
-        """.replace("USER_AVATAR", user.get('avatar_url', f'https://github.com/identicons/{user["login"]}')).replace("USER_LOGIN", user['login'])
+        """
         return html_content
     except HTTPException:
         return """
