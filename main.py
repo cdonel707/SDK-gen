@@ -675,55 +675,93 @@ async def read_root(request: Request):
 
                 async function loadUserRepositories() {{
                     try {{
+                        console.log('Loading repositories...');
                         const response = await fetch('/api/repositories');
+                        
+                        if (!response.ok) {{
+                            throw new Error(`HTTP error! status: ${{response.status}}`);
+                        }}
+                        
                         const repos = await response.json();
                         userRepositories = repos;
-                        console.log('Loaded repositories:', repos.length);
+                        console.log('Loaded repositories:', repos.length, repos);
+                        
+                        // Show a message if no repositories found
+                        if (repos.length === 0) {{
+                            console.log('No repositories found with admin access');
+                        }}
                     }} catch (error) {{
                         console.error('Failed to load repositories:', error);
+                        // Show error message to user
+                        const searchInput = document.getElementById('repository_search');
+                        if (searchInput) {{
+                            searchInput.placeholder = 'Error loading repositories - check console';
+                        }}
                     }}
                 }}
 
-                document.getElementById('repository_search').addEventListener('input', function(e) {{
+                document.addEventListener('DOMContentLoaded', function() {{
+                    const searchInput = document.getElementById('repository_search');
+                    if (searchInput) {{
+                        searchInput.addEventListener('input', function(e) {{
+                            console.log('Search input changed:', e.target.value);
+                            handleRepositorySearch(e);
+                        }});
+                    }}
+                }});
+
+                function handleRepositorySearch(e) {{
                     const searchTerm = e.target.value.toLowerCase();
                     const dropdown = document.getElementById('repository_dropdown');
+                    
+                    console.log('Searching for:', searchTerm, 'Total repos:', userRepositories.length);
                     
                     if (searchTerm.length === 0) {{
                         dropdown.style.display = 'none';
                         return;
                     }}
 
-                    const filteredRepos = userRepositories.filter(repo => 
-                        repo.name.toLowerCase().includes(searchTerm) && 
-                        !selectedRepositories.some(selected => selected.id === repo.id)
-                    );
+                    const filteredRepos = userRepositories.filter(repo => {{
+                        const nameMatch = repo.name.toLowerCase().includes(searchTerm);
+                        const notSelected = !selectedRepositories.some(selected => selected.id === repo.id);
+                        console.log(`Repo ${{repo.name}}: nameMatch=${{nameMatch}}, notSelected=${{notSelected}}`);
+                        return nameMatch && notSelected;
+                    }});
+
+                    console.log('Filtered repos:', filteredRepos.length, filteredRepos);
 
                     if (filteredRepos.length === 0) {{
-                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '<div class="repo-item" style="color: #6b7280; font-style: italic;">No repositories found</div>';
+                        dropdown.style.display = 'block';
                         return;
                     }}
 
                     dropdown.innerHTML = filteredRepos.map(repo => 
-                        `<div class="repo-item" onclick="selectRepository(${{repo.id}})">
+                        `<div class="repo-item" onclick="selectRepository(${{repo.id}})" data-repo-id="${{repo.id}}">
                             <strong>${{repo.name}}</strong>
                             <div style="font-size: 0.875rem; color: #6b7280;">${{repo.description || 'No description'}}</div>
                         </div>`
                     ).join('');
                     
                     dropdown.style.display = 'block';
-                }});
+                }}
 
                 function selectRepository(repoId) {{
+                    console.log('Selecting repository:', repoId);
                     const repo = userRepositories.find(r => r.id === repoId);
                     if (repo && !selectedRepositories.some(selected => selected.id === repoId)) {{
                         selectedRepositories.push(repo);
                         updateSelectedReposDisplay();
                         document.getElementById('repository_search').value = '';
                         document.getElementById('repository_dropdown').style.display = 'none';
+                        console.log('Selected repositories:', selectedRepositories);
+                    }} else {{
+                        console.log('Repository not found or already selected');
                     }}
                 }}
 
                 function removeRepository(repoId) {{
+                    console.log('Removing repository:', repoId);
                     selectedRepositories = selectedRepositories.filter(repo => repo.id !== repoId);
                     updateSelectedReposDisplay();
                 }}
@@ -733,9 +771,11 @@ async def read_root(request: Request):
                     container.innerHTML = selectedRepositories.map(repo => 
                         `<span class="repo-tag">
                             ${{repo.name}}
-                            <button onclick="removeRepository(${{repo.id}})">×</button>
+                            <button onclick="removeRepository(${{repo.id}})" type="button">×</button>
                         </span>`
                     ).join('');
+                    
+                    console.log('Updated selected repos display:', selectedRepositories.length);
                 }}
 
                 document.addEventListener('click', function(e) {{
@@ -747,6 +787,8 @@ async def read_root(request: Request):
                 async function addRepoAccess() {{
                     const usernames = document.getElementById('github_usernames').value.trim();
                     const resultsDiv = document.getElementById('accessResults');
+                    
+                    console.log('Adding repo access:', selectedRepositories.length, 'repos for users:', usernames);
                     
                     if (selectedRepositories.length === 0) {{
                         resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please select at least one repository.</div>';
@@ -772,10 +814,15 @@ async def read_root(request: Request):
                             }})
                         }});
 
+                        if (!response.ok) {{
+                            throw new Error(`HTTP error! status: ${{response.status}}`);
+                        }}
+
                         const result = await response.json();
                         displayAccessResults(result);
                     }} catch (error) {{
-                        resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">An error occurred. Please try again.</div>';
+                        console.error('Error adding repo access:', error);
+                        resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">An error occurred. Please try again. Check console for details.</div>';
                     }}
                 }}
 
@@ -1330,21 +1377,39 @@ async def get_repositories(request: Request):
         user = await get_current_user(request)
         g = Github(user['access_token'])
         
+        print(f"Fetching repositories for user: {user['login']}")
+        
         # Get repositories where user has admin access
         repositories = []
-        for repo in g.get_user().get_repos():
-            if repo.permissions.admin:
-                repositories.append({
-                    'id': repo.id,
-                    'name': repo.name,
-                    'full_name': repo.full_name,
-                    'description': repo.description,
-                    'private': repo.private
-                })
+        auth_user = g.get_user()
         
+        for repo in auth_user.get_repos():
+            try:
+                # Check if user has admin permissions
+                if repo.permissions and repo.permissions.admin:
+                    repositories.append({
+                        'id': repo.id,
+                        'name': repo.name,
+                        'full_name': repo.full_name,
+                        'description': repo.description,
+                        'private': repo.private,
+                        'permissions': {
+                            'admin': repo.permissions.admin,
+                            'maintain': repo.permissions.maintain if hasattr(repo.permissions, 'maintain') else False,
+                            'push': repo.permissions.push,
+                            'pull': repo.permissions.pull
+                        }
+                    })
+            except Exception as repo_error:
+                print(f"Error processing repo {repo.name}: {str(repo_error)}")
+                continue
+        
+        print(f"Found {len(repositories)} repositories with admin access")
         return repositories
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error fetching repositories: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch repositories: {str(e)}")
 
 @app.post("/api/add-repo-access")
 async def add_repo_access(request: Request):
