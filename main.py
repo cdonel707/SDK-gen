@@ -667,6 +667,7 @@ async def read_root(request: Request):
                             <div class="form-group">
                                 <label for="github_usernames">GitHub Usernames or Emails</label>
                                 <div id="username_input_container" class="username-input-container">
+                                    <div id="username_pills_container" class="username-pills-container"></div>
                                     <input 
                                         type="text" 
                                         id="github_usernames" 
@@ -843,22 +844,21 @@ async def read_root(request: Request):
                 }}
 
                 function updateInputDisplay() {{
-                    const container = document.getElementById('username_input_container');
+                    const pillsContainer = document.getElementById('username_pills_container');
                     const input = document.getElementById('github_usernames');
                     
-                    if (!container || !input) return;
+                    if (!pillsContainer || !input) return;
                     
-                    // Remove existing pills
-                    const existingPills = container.querySelectorAll('.username-pill');
-                    existingPills.forEach(pill => pill.remove());
+                    // Clear existing pills
+                    pillsContainer.innerHTML = '';
                     
-                    // Create and insert pills before the input
+                    // Create and insert pills
                     usernamePills.forEach((pill, index) => {{
                         const displayText = pill.isEmail ? `${{pill.username}}` : pill.username;
                         const emailClass = pill.isEmail ? ' email' : '';
                         const tooltip = pill.isEmail ? `Extracted from email: ${{pill.original}}` : `GitHub username: ${{pill.username}}`;
                         
-                        const pillElement = document.createElement('div');
+                        const pillElement = document.createElement('span');
                         pillElement.className = `username-pill${{emailClass}}`;
                         pillElement.title = tooltip;
                         pillElement.innerHTML = `
@@ -866,7 +866,7 @@ async def read_root(request: Request):
                             <button class="remove-btn" onclick="removeUsernamePill(${{index}})" type="button">×</button>
                         `;
                         
-                        container.insertBefore(pillElement, input);
+                        pillsContainer.appendChild(pillElement);
                     }});
                     
                     // Update placeholder
@@ -1469,11 +1469,6 @@ async def handle_submission(
 
 
                     .username-input-container {{
-                        position: relative;
-                        display: flex;
-                        flex-wrap: wrap;
-                        align-items: center;
-                        gap: 0.25rem;
                         border: 2px solid #e1e5e9;
                         border-radius: 8px;
                         background: white;
@@ -1482,11 +1477,26 @@ async def handle_submission(
                         cursor: text;
                         transition: all 0.15s ease;
                         font-family: 'Slack-Lato', 'Lato', sans-serif;
+                        line-height: 1.5;
+                        font-size: 15px;
+                        color: #1d1c1d;
+                        white-space: nowrap;
+                        overflow-x: auto;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.25rem;
                     }}
 
                     .username-input-container:focus-within {{
                         border-color: #1264a3;
                         box-shadow: 0 0 0 1px #1264a3;
+                    }}
+
+                    .username-pills-container {{
+                        display: flex;
+                        align-items: center;
+                        gap: 0.25rem;
+                        flex-shrink: 0;
                     }}
 
                     .username-input {{
@@ -1520,7 +1530,8 @@ async def handle_submission(
                         cursor: default;
                         max-width: 200px;
                         font-family: inherit;
-                        flex-shrink: 0;
+                        margin-right: 0.25rem;
+                        vertical-align: middle;
                     }}
 
                     .username-pill.email {{
