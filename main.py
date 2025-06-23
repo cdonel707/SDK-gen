@@ -666,19 +666,19 @@ async def read_root(request: Request):
                             </div>
                             <div class="form-group">
                                 <label for="github_usernames">GitHub Usernames or Emails</label>
-                                <textarea 
-                                    id="github_usernames" 
-                                    name="github_usernames" 
-                                    placeholder="Enter usernames or emails (one per line, or separated by spaces/commas)&#10;&#10;Examples:&#10;chris707&#10;emma545&#10;user@example.com&#10;56-emma e55th"
-                                    required
-                                    rows="4"
-                                ></textarea>
-                                <div class="file-info">
-                                    Smart parsing - supports usernames, emails, and various separators. Users will be added with "Maintain" permissions.
+                                <div id="username_input_container" class="username-input-container">
+                                    <div id="username_pills" class="username-pills"></div>
+                                    <input 
+                                        type="text" 
+                                        id="github_usernames" 
+                                        name="github_usernames" 
+                                        placeholder="Type usernames or emails and press space..."
+                                        autocomplete="off"
+                                        class="username-input"
+                                    >
                                 </div>
-                                <div id="parsed_users" style="margin-top: 0.5rem; display: none;">
-                                    <div style="font-size: 0.875rem; color: #374151; margin-bottom: 0.5rem;">Detected users:</div>
-                                    <div id="parsed_users_list" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+                                <div class="file-info">
+                                    Type usernames/emails and press space to add them as tags. Users will be added with "Maintain" permissions.
                                 </div>
                             </div>
                             <button type="button" onclick="addRepoAccess()" style="background: #059669;">
@@ -718,56 +718,142 @@ async def read_root(request: Request):
                     }}
                 }});
 
+                let usernamePills = [];
+
                 function initializeUsernameParser() {{
-                    const usernamesTextarea = document.getElementById('github_usernames');
-                    if (!usernamesTextarea) return;
+                    const usernameInput = document.getElementById('github_usernames');
+                    const container = document.getElementById('username_input_container');
                     
-                    // Add event listener for real-time parsing
-                    usernamesTextarea.addEventListener('input', function() {{
-                        parseAndDisplayUsers();
-                    }});
+                    if (!usernameInput || !container) return;
                     
-                    // Also parse on paste
-                    usernamesTextarea.addEventListener('paste', function() {{
-                        setTimeout(parseAndDisplayUsers, 10); // Small delay to ensure paste content is processed
+                    // Handle input events
+                    usernameInput.addEventListener('keydown', handleUsernameKeydown);
+                    usernameInput.addEventListener('input', handleUsernameInput);
+                    usernameInput.addEventListener('paste', handleUsernamePaste);
+                    
+                    // Make container clickable to focus input
+                    container.addEventListener('click', function(e) {{
+                        if (e.target === container || e.target.classList.contains('username-pills')) {{
+                            usernameInput.focus();
+                        }}
                     }});
                 }}
 
-                function parseUsernames(input) {{
-                    if (!input || input.trim() === '') return [];
+                function handleUsernameKeydown(e) {{
+                    const input = e.target;
+                    const value = input.value.trim();
                     
-                    // Split by various separators: newlines, commas, semicolons, spaces, tabs
-                    const separators = /[\n\r,;\\s\\t]+/;
-                    const rawTokens = input.split(separators);
-                    
-                    const users = [];
-                    const seenUsers = new Set();
-                    
-                    for (let token of rawTokens) {{
-                        token = token.trim();
-                        if (!token) continue;
-                        
-                        // Extract username from email if it's an email
-                        let username = token;
-                        if (token.includes('@')) {{
-                            // It's an email, extract the part before @
-                            username = token.split('@')[0];
-                        }}
-                        
-                        // Basic validation for GitHub username format
-                        // GitHub usernames can contain alphanumeric characters and hyphens
-                        // Cannot start or end with hyphen, cannot have consecutive hyphens
-                        if (isValidGitHubUsername(username) && !seenUsers.has(username.toLowerCase())) {{
-                            users.push({{
-                                original: token,
-                                username: username,
-                                isEmail: token.includes('@')
-                            }});
-                            seenUsers.add(username.toLowerCase());
-                        }}
+                    // Handle space, comma, semicolon, or enter to create pill
+                    if ((e.key === ' ' || e.key === ',' || e.key === ';' || e.key === 'Enter') && value) {{
+                        e.preventDefault();
+                        addUsernamePill(value);
+                        input.value = '';
+                        return;
                     }}
                     
-                    return users;
+                    // Handle backspace to remove last pill when input is empty
+                    if (e.key === 'Backspace' && !value && usernamePills.length > 0) {{
+                        e.preventDefault();
+                        removeUsernamePill(usernamePills.length - 1);
+                        return;
+                    }}
+                }}
+
+                function handleUsernameInput(e) {{
+                    // Auto-detect when user types multiple words separated by spaces
+                    const input = e.target;
+                    const value = input.value;
+                    
+                    // Check if there are multiple tokens separated by spaces
+                    const tokens = value.split(/[\\s,;]+/).filter(t => t.trim());
+                    if (tokens.length > 1) {{
+                        // Add all but the last token as pills
+                        for (let i = 0; i < tokens.length - 1; i++) {{
+                            if (tokens[i].trim()) {{
+                                addUsernamePill(tokens[i].trim());
+                            }}
+                        }}
+                        // Keep the last token in the input
+                        input.value = tokens[tokens.length - 1] || '';
+                    }}
+                }}
+
+                function handleUsernamePaste(e) {{
+                    e.preventDefault();
+                    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                    const tokens = pastedText.split(/[\\s,;\\n\\r\\t]+/).filter(t => t.trim());
+                    
+                    tokens.forEach(token => {{
+                        if (token.trim()) {{
+                            addUsernamePill(token.trim());
+                        }}
+                    }});
+                }}
+
+                function addUsernamePill(input) {{
+                    const trimmedInput = input.trim();
+                    if (!trimmedInput) return;
+                    
+                    // Extract username from email if it's an email
+                    let username = trimmedInput;
+                    let isEmail = false;
+                    
+                    if (trimmedInput.includes('@')) {{
+                        username = trimmedInput.split('@')[0];
+                        isEmail = true;
+                    }}
+                    
+                    // Validate GitHub username
+                    if (!isValidGitHubUsername(username)) {{
+                        console.log('Invalid GitHub username:', username);
+                        return;
+                    }}
+                    
+                    // Check for duplicates
+                    if (usernamePills.some(pill => pill.username.toLowerCase() === username.toLowerCase())) {{
+                        console.log('Duplicate username:', username);
+                        return;
+                    }}
+                    
+                    // Add to pills array
+                    const pill = {{
+                        original: trimmedInput,
+                        username: username,
+                        isEmail: isEmail
+                    }};
+                    
+                    usernamePills.push(pill);
+                    renderUsernamePills();
+                }}
+
+                function removeUsernamePill(index) {{
+                    if (index >= 0 && index < usernamePills.length) {{
+                        usernamePills.splice(index, 1);
+                        renderUsernamePills();
+                    }}
+                }}
+
+                function renderUsernamePills() {{
+                    const pillsContainer = document.getElementById('username_pills');
+                    if (!pillsContainer) return;
+                    
+                    pillsContainer.innerHTML = usernamePills.map((pill, index) => {{
+                        const displayText = pill.isEmail ? `${{pill.username}} (from ${{pill.original}})` : pill.username;
+                        const emailClass = pill.isEmail ? ' email' : '';
+                        
+                        return `<div class="username-pill${{emailClass}}" title="${{pill.isEmail ? 'Extracted from email: ' + pill.original : 'GitHub username'}}">
+                            <span>${{displayText}}</span>
+                            <button class="remove-btn" onclick="removeUsernamePill(${{index}})" type="button">×</button>
+                        </div>`;
+                    }}).join('');
+                    
+                    // Update placeholder based on whether we have pills
+                    const input = document.getElementById('github_usernames');
+                    if (input) {{
+                        input.placeholder = usernamePills.length > 0 
+                            ? 'Add more users...' 
+                            : 'Type usernames or emails and press space...';
+                    }}
                 }}
 
                 function isValidGitHubUsername(username) {{
@@ -779,35 +865,8 @@ async def read_root(request: Request):
                     return githubUsernameRegex.test(username);
                 }}
 
-                function parseAndDisplayUsers() {{
-                    const usernamesTextarea = document.getElementById('github_usernames');
-                    const parsedUsersDiv = document.getElementById('parsed_users');
-                    const parsedUsersListDiv = document.getElementById('parsed_users_list');
-                    
-                    if (!usernamesTextarea || !parsedUsersDiv || !parsedUsersListDiv) return;
-                    
-                    const input = usernamesTextarea.value;
-                    const users = parseUsernames(input);
-                    
-                    if (users.length === 0) {{
-                        parsedUsersDiv.style.display = 'none';
-                        return;
-                    }}
-                    
-                    // Display parsed users
-                    parsedUsersListDiv.innerHTML = users.map(user => {{
-                        const displayText = user.isEmail ? `${{user.username}} (from ${{user.original}})` : user.username;
-                        const emailClass = user.isEmail ? ' email' : '';
-                        
-                        return `<span class="parsed-user-tag${{emailClass}}" title="${{user.isEmail ? 'Extracted from email: ' + user.original : 'GitHub username'}}">
-                            ${{displayText}}
-                        </span>`;
-                    }}).join('');
-                    
-                    parsedUsersDiv.style.display = 'block';
-                    
-                    // Store parsed usernames for form submission
-                    usernamesTextarea.dataset.parsedUsernames = JSON.stringify(users.map(u => u.username));
+                function getUsernamesForSubmission() {{
+                    return usernamePills.map(pill => pill.username);
                 }}
 
                 async function initializeRepositorySearch() {{
@@ -1025,7 +1084,6 @@ async def read_root(request: Request):
                 }});
 
                 async function addRepoAccess() {{
-                    const usernamesTextarea = document.getElementById('github_usernames');
                     const resultsDiv = document.getElementById('accessResults');
                     
                     if (selectedRepositories.length === 0) {{
@@ -1033,29 +1091,11 @@ async def read_root(request: Request):
                         return;
                     }}
                     
-                    // Get parsed usernames from the smart parser
-                    let usernames = [];
-                    if (usernamesTextarea.dataset.parsedUsernames) {{
-                        try {{
-                            usernames = JSON.parse(usernamesTextarea.dataset.parsedUsernames);
-                        }} catch (e) {{
-                            console.error('Error parsing stored usernames:', e);
-                        }}
-                    }}
-                    
-                    // Fallback to manual parsing if stored data is not available
-                    if (usernames.length === 0) {{
-                        const rawInput = usernamesTextarea.value.trim();
-                        if (!rawInput) {{
-                            resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please enter at least one GitHub username or email.</div>';
-                            return;
-                        }}
-                        const parsedUsers = parseUsernames(rawInput);
-                        usernames = parsedUsers.map(u => u.username);
-                    }}
+                    // Get usernames from pills
+                    const usernames = getUsernamesForSubmission();
                     
                     if (usernames.length === 0) {{
-                        resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">No valid GitHub usernames found. Please check your input.</div>';
+                        resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please add at least one GitHub username or email.</div>';
                         return;
                     }}
                     
@@ -1108,7 +1148,12 @@ async def read_root(request: Request):
                     
                     if (results.some(r => r.success)) {{
                         setTimeout(() => {{
+                            // Clear username pills
+                            usernamePills = [];
+                            renderUsernamePills();
                             document.getElementById('github_usernames').value = '';
+                            
+                            // Clear selected repositories
                             selectedRepositories = [];
                             updateSelectedReposDisplay();
                         }}, 3000);
@@ -1425,12 +1470,83 @@ async def handle_submission(
                         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                     }}
 
-                    #parsed_users {{
-                        background: #f8fafc;
-                        border: 1px solid #e2e8f0;
+                    .username-input-container {{
+                        display: flex;
+                        flex-wrap: wrap;
+                        align-items: center;
+                        gap: 0.5rem;
+                        padding: 0.75rem;
+                        border: 1px solid #d1d5db;
                         border-radius: 8px;
-                        padding: 1rem;
-                        margin-top: 0.75rem;
+                        background: #f9fafb;
+                        min-height: 50px;
+                        cursor: text;
+                        transition: all 0.2s ease;
+                    }}
+
+                    .username-input-container:focus-within {{
+                        border-color: #2563eb;
+                        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+                        background: white;
+                    }}
+
+                    .username-pills {{
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 0.5rem;
+                    }}
+
+                    .username-input {{
+                        border: none;
+                        outline: none;
+                        background: transparent;
+                        flex: 1;
+                        min-width: 150px;
+                        font-size: 1rem;
+                        padding: 0.25rem;
+                    }}
+
+                    .username-pill {{
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        background: #2563eb;
+                        color: white;
+                        padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+                        border-radius: 20px;
+                        font-size: 0.875rem;
+                        font-weight: 500;
+                        transition: all 0.2s ease;
+                        cursor: default;
+                    }}
+
+                    .username-pill.email {{
+                        background: #dc2626;
+                    }}
+
+                    .username-pill:hover {{
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    }}
+
+                    .username-pill .remove-btn {{
+                        background: rgba(255, 255, 255, 0.3);
+                        border: none;
+                        border-radius: 50%;
+                        width: 18px;
+                        height: 18px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        font-size: 12px;
+                        color: white;
+                        transition: all 0.2s ease;
+                    }}
+
+                    .username-pill .remove-btn:hover {{
+                        background: rgba(255, 255, 255, 0.5);
+                        transform: scale(1.1);
                     }}
 
                     @media (max-width: 640px) {{
