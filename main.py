@@ -667,7 +667,6 @@ async def read_root(request: Request):
                             <div class="form-group">
                                 <label for="github_usernames">GitHub Usernames or Emails</label>
                                 <div id="username_input_container" class="username-input-container">
-                                    <div id="username_pills" class="username-pills"></div>
                                     <input 
                                         type="text" 
                                         id="github_usernames" 
@@ -726,6 +725,12 @@ async def read_root(request: Request):
                     
                     if (!usernameInput || !container) return;
                     
+                    // Create overlay for pills
+                    const overlay = document.createElement('div');
+                    overlay.className = 'pills-overlay';
+                    overlay.id = 'pills_overlay';
+                    container.appendChild(overlay);
+                    
                     // Handle input events
                     usernameInput.addEventListener('keydown', handleUsernameKeydown);
                     usernameInput.addEventListener('input', handleUsernameInput);
@@ -733,26 +738,43 @@ async def read_root(request: Request):
                     
                     // Make container clickable to focus input
                     container.addEventListener('click', function(e) {{
-                        if (e.target === container || e.target.classList.contains('username-pills')) {{
+                        if (!e.target.closest('.username-pill')) {{
                             usernameInput.focus();
                         }}
                     }});
+                    
+                    // Initialize display
+                    updateInputDisplay();
                 }}
 
                 function handleUsernameKeydown(e) {{
                     const input = e.target;
-                    const value = input.value.trim();
+                    const cursorPos = input.selectionStart;
+                    const value = input.value;
                     
                     // Handle space, comma, semicolon, or enter to create pill
-                    if ((e.key === ' ' || e.key === ',' || e.key === ';' || e.key === 'Enter') && value) {{
-                        e.preventDefault();
-                        addUsernamePill(value);
-                        input.value = '';
-                        return;
+                    if ((e.key === ' ' || e.key === ',' || e.key === ';' || e.key === 'Enter')) {{
+                        const beforeCursor = value.substring(0, cursorPos);
+                        const afterCursor = value.substring(cursorPos);
+                        
+                        // Find the current word being typed
+                        const wordStart = Math.max(0, beforeCursor.lastIndexOf(' ') + 1);
+                        const currentWord = beforeCursor.substring(wordStart).trim();
+                        
+                        if (currentWord) {{
+                            e.preventDefault();
+                            addUsernamePill(currentWord);
+                            
+                            // Update input value
+                            const newValue = value.substring(0, wordStart) + value.substring(cursorPos);
+                            input.value = newValue.trim();
+                            updateInputDisplay();
+                            return;
+                        }}
                     }}
                     
-                    // Handle backspace to remove last pill when input is empty
-                    if (e.key === 'Backspace' && !value && usernamePills.length > 0) {{
+                    // Handle backspace to remove last pill when at start or after space
+                    if (e.key === 'Backspace' && cursorPos === 0 && usernamePills.length > 0) {{
                         e.preventDefault();
                         removeUsernamePill(usernamePills.length - 1);
                         return;
@@ -760,34 +782,27 @@ async def read_root(request: Request):
                 }}
 
                 function handleUsernameInput(e) {{
-                    // Auto-detect when user types multiple words separated by spaces
-                    const input = e.target;
-                    const value = input.value;
-                    
-                    // Check if there are multiple tokens separated by spaces
-                    const tokens = value.split(/[\\s,;]+/).filter(t => t.trim());
-                    if (tokens.length > 1) {{
-                        // Add all but the last token as pills
-                        for (let i = 0; i < tokens.length - 1; i++) {{
-                            if (tokens[i].trim()) {{
-                                addUsernamePill(tokens[i].trim());
-                            }}
-                        }}
-                        // Keep the last token in the input
-                        input.value = tokens[tokens.length - 1] || '';
-                    }}
+                    updateInputDisplay();
                 }}
 
                 function handleUsernamePaste(e) {{
-                    e.preventDefault();
-                    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-                    const tokens = pastedText.split(/[\\s,;\\n\\r\\t]+/).filter(t => t.trim());
-                    
-                    tokens.forEach(token => {{
-                        if (token.trim()) {{
-                            addUsernamePill(token.trim());
+                    setTimeout(() => {{
+                        const input = e.target;
+                        const value = input.value;
+                        const tokens = value.split(/[\\s,;\\n\\r\\t]+/).filter(t => t.trim());
+                        
+                        if (tokens.length > 1) {{
+                            e.preventDefault();
+                            // Add all tokens as pills
+                            tokens.forEach(token => {{
+                                if (token.trim()) {{
+                                    addUsernamePill(token.trim());
+                                }}
+                            }});
+                            input.value = '';
+                            updateInputDisplay();
                         }}
-                    }});
+                    }}, 10);
                 }}
 
                 function addUsernamePill(input) {{
@@ -823,21 +838,24 @@ async def read_root(request: Request):
                     }};
                     
                     usernamePills.push(pill);
-                    renderUsernamePills();
+                    updateInputDisplay();
                 }}
 
                 function removeUsernamePill(index) {{
                     if (index >= 0 && index < usernamePills.length) {{
                         usernamePills.splice(index, 1);
-                        renderUsernamePills();
+                        updateInputDisplay();
                     }}
                 }}
 
-                function renderUsernamePills() {{
-                    const pillsContainer = document.getElementById('username_pills');
-                    if (!pillsContainer) return;
+                function updateInputDisplay() {{
+                    const overlay = document.getElementById('pills_overlay');
+                    const input = document.getElementById('github_usernames');
                     
-                    pillsContainer.innerHTML = usernamePills.map((pill, index) => {{
+                    if (!overlay || !input) return;
+                    
+                    // Create pills HTML
+                    const pillsHTML = usernamePills.map((pill, index) => {{
                         const displayText = pill.isEmail ? `${{pill.username}}` : pill.username;
                         const emailClass = pill.isEmail ? ' email' : '';
                         const tooltip = pill.isEmail ? `Extracted from email: ${{pill.original}}` : `GitHub username: ${{pill.username}}`;
@@ -848,13 +866,20 @@ async def read_root(request: Request):
                         </div>`;
                     }}).join('');
                     
-                    // Update placeholder based on whether we have pills
-                    const input = document.getElementById('github_usernames');
-                    if (input) {{
-                        input.placeholder = usernamePills.length > 0 
-                            ? 'Add more users...' 
-                            : 'Type usernames or emails and press space...';
-                    }}
+                    // Add spacer to push input text to the right position
+                    const inputValue = input.value;
+                    const spacerText = ' '.repeat(Math.max(0, usernamePills.length * 8)); // Approximate spacing
+                    
+                    overlay.innerHTML = pillsHTML + `<span class="spacer">${{spacerText}}</span>`;
+                    
+                    // Update placeholder
+                    input.placeholder = usernamePills.length > 0 
+                        ? 'Add more users...' 
+                        : 'Type usernames or emails and press space...';
+                    
+                    // Adjust input padding to account for pills
+                    const pillsWidth = usernamePills.length * 80; // Approximate pill width
+                    input.style.paddingLeft = `${{Math.max(12, pillsWidth + 12)}}px`;
                 }}
 
                 function isValidGitHubUsername(username) {{
@@ -1151,8 +1176,8 @@ async def read_root(request: Request):
                         setTimeout(() => {{
                             // Clear username pills
                             usernamePills = [];
-                            renderUsernamePills();
                             document.getElementById('github_usernames').value = '';
+                            updateInputDisplay();
                             
                             // Clear selected repositories
                             selectedRepositories = [];
@@ -1451,11 +1476,9 @@ async def handle_submission(
 
 
                     .username-input-container {{
+                        position: relative;
                         display: flex;
-                        flex-wrap: wrap;
                         align-items: center;
-                        gap: 0.25rem;
-                        padding: 0.5rem 0.75rem;
                         border: 2px solid #e1e5e9;
                         border-radius: 8px;
                         background: white;
@@ -1463,6 +1486,7 @@ async def handle_submission(
                         cursor: text;
                         transition: all 0.15s ease;
                         font-family: 'Slack-Lato', 'Lato', sans-serif;
+                        overflow: hidden;
                     }}
 
                     .username-input-container:focus-within {{
@@ -1470,28 +1494,47 @@ async def handle_submission(
                         box-shadow: 0 0 0 1px #1264a3;
                     }}
 
-                    .username-pills {{
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 0.25rem;
-                        align-items: center;
-                    }}
-
                     .username-input {{
                         border: none;
                         outline: none;
                         background: transparent;
-                        flex: 1;
-                        min-width: 120px;
+                        width: 100%;
                         font-size: 15px;
-                        padding: 0.25rem 0.5rem;
+                        padding: 0.5rem 0.75rem;
                         font-family: inherit;
                         color: #1d1c1d;
+                        position: relative;
+                        z-index: 2;
                     }}
 
                     .username-input::placeholder {{
                         color: #616061;
                         font-weight: 400;
+                    }}
+
+                    .pills-overlay {{
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        padding: 0.5rem 0.75rem;
+                        display: flex;
+                        flex-wrap: wrap;
+                        align-items: center;
+                        gap: 0.25rem;
+                        pointer-events: none;
+                        z-index: 1;
+                        font-size: 15px;
+                        font-family: inherit;
+                        line-height: 1.2;
+                    }}
+
+                    .pills-overlay .spacer {{
+                        color: transparent;
+                        white-space: pre;
+                        font-size: 15px;
+                        font-family: inherit;
                     }}
 
                     .username-pill {{
@@ -1508,6 +1551,8 @@ async def handle_submission(
                         cursor: default;
                         max-width: 200px;
                         font-family: inherit;
+                        pointer-events: auto;
+                        margin-right: 0.25rem;
                     }}
 
                     .username-pill.email {{
@@ -1540,6 +1585,7 @@ async def handle_submission(
                         color: white;
                         transition: background-color 0.15s ease;
                         margin-left: 0.125rem;
+                        pointer-events: auto;
                     }}
 
                     .username-pill .remove-btn:hover {{
