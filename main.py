@@ -725,12 +725,6 @@ async def read_root(request: Request):
                     
                     if (!usernameInput || !container) return;
                     
-                    // Create overlay for pills
-                    const overlay = document.createElement('div');
-                    overlay.className = 'pills-overlay';
-                    overlay.id = 'pills_overlay';
-                    container.appendChild(overlay);
-                    
                     // Handle input events
                     usernameInput.addEventListener('keydown', handleUsernameKeydown);
                     usernameInput.addEventListener('input', handleUsernameInput);
@@ -849,37 +843,36 @@ async def read_root(request: Request):
                 }}
 
                 function updateInputDisplay() {{
-                    const overlay = document.getElementById('pills_overlay');
+                    const container = document.getElementById('username_input_container');
                     const input = document.getElementById('github_usernames');
                     
-                    if (!overlay || !input) return;
+                    if (!container || !input) return;
                     
-                    // Create pills HTML
-                    const pillsHTML = usernamePills.map((pill, index) => {{
+                    // Remove existing pills
+                    const existingPills = container.querySelectorAll('.username-pill');
+                    existingPills.forEach(pill => pill.remove());
+                    
+                    // Create and insert pills before the input
+                    usernamePills.forEach((pill, index) => {{
                         const displayText = pill.isEmail ? `${{pill.username}}` : pill.username;
                         const emailClass = pill.isEmail ? ' email' : '';
                         const tooltip = pill.isEmail ? `Extracted from email: ${{pill.original}}` : `GitHub username: ${{pill.username}}`;
                         
-                        return `<div class="username-pill${{emailClass}}" title="${{tooltip}}">
+                        const pillElement = document.createElement('div');
+                        pillElement.className = `username-pill${{emailClass}}`;
+                        pillElement.title = tooltip;
+                        pillElement.innerHTML = `
                             <span class="pill-text">${{displayText}}</span>
                             <button class="remove-btn" onclick="removeUsernamePill(${{index}})" type="button">×</button>
-                        </div>`;
-                    }}).join('');
-                    
-                    // Add spacer to push input text to the right position
-                    const inputValue = input.value;
-                    const spacerText = ' '.repeat(Math.max(0, usernamePills.length * 8)); // Approximate spacing
-                    
-                    overlay.innerHTML = pillsHTML + `<span class="spacer">${{spacerText}}</span>`;
+                        `;
+                        
+                        container.insertBefore(pillElement, input);
+                    }});
                     
                     // Update placeholder
                     input.placeholder = usernamePills.length > 0 
                         ? 'Add more users...' 
                         : 'Type usernames or emails and press space...';
-                    
-                    // Adjust input padding to account for pills
-                    const pillsWidth = usernamePills.length * 80; // Approximate pill width
-                    input.style.paddingLeft = `${{Math.max(12, pillsWidth + 12)}}px`;
                 }}
 
                 function isValidGitHubUsername(username) {{
@@ -1478,15 +1471,17 @@ async def handle_submission(
                     .username-input-container {{
                         position: relative;
                         display: flex;
+                        flex-wrap: wrap;
                         align-items: center;
+                        gap: 0.25rem;
                         border: 2px solid #e1e5e9;
                         border-radius: 8px;
                         background: white;
                         min-height: 44px;
+                        padding: 0.5rem 0.75rem;
                         cursor: text;
                         transition: all 0.15s ease;
                         font-family: 'Slack-Lato', 'Lato', sans-serif;
-                        overflow: hidden;
                     }}
 
                     .username-input-container:focus-within {{
@@ -1498,43 +1493,17 @@ async def handle_submission(
                         border: none;
                         outline: none;
                         background: transparent;
-                        width: 100%;
+                        flex: 1;
+                        min-width: 120px;
                         font-size: 15px;
-                        padding: 0.5rem 0.75rem;
+                        padding: 0;
                         font-family: inherit;
                         color: #1d1c1d;
-                        position: relative;
-                        z-index: 2;
                     }}
 
                     .username-input::placeholder {{
                         color: #616061;
                         font-weight: 400;
-                    }}
-
-                    .pills-overlay {{
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        padding: 0.5rem 0.75rem;
-                        display: flex;
-                        flex-wrap: wrap;
-                        align-items: center;
-                        gap: 0.25rem;
-                        pointer-events: none;
-                        z-index: 1;
-                        font-size: 15px;
-                        font-family: inherit;
-                        line-height: 1.2;
-                    }}
-
-                    .pills-overlay .spacer {{
-                        color: transparent;
-                        white-space: pre;
-                        font-size: 15px;
-                        font-family: inherit;
                     }}
 
                     .username-pill {{
@@ -1551,8 +1520,7 @@ async def handle_submission(
                         cursor: default;
                         max-width: 200px;
                         font-family: inherit;
-                        pointer-events: auto;
-                        margin-right: 0.25rem;
+                        flex-shrink: 0;
                     }}
 
                     .username-pill.email {{
@@ -1585,7 +1553,6 @@ async def handle_submission(
                         color: white;
                         transition: background-color 0.15s ease;
                         margin-left: 0.125rem;
-                        pointer-events: auto;
                     }}
 
                     .username-pill .remove-btn:hover {{
