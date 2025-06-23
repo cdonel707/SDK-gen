@@ -838,11 +838,12 @@ async def read_root(request: Request):
                     if (!pillsContainer) return;
                     
                     pillsContainer.innerHTML = usernamePills.map((pill, index) => {{
-                        const displayText = pill.isEmail ? `${{pill.username}} (from ${{pill.original}})` : pill.username;
+                        const displayText = pill.isEmail ? `${{pill.username}}` : pill.username;
                         const emailClass = pill.isEmail ? ' email' : '';
+                        const tooltip = pill.isEmail ? `Extracted from email: ${{pill.original}}` : `GitHub username: ${{pill.username}}`;
                         
-                        return `<div class="username-pill${{emailClass}}" title="${{pill.isEmail ? 'Extracted from email: ' + pill.original : 'GitHub username'}}">
-                            <span>${{displayText}}</span>
+                        return `<div class="username-pill${{emailClass}}" title="${{tooltip}}">
+                            <span class="pill-text">${{displayText}}</span>
                             <button class="remove-btn" onclick="removeUsernamePill(${{index}})" type="button">×</button>
                         </div>`;
                     }}).join('');
@@ -1447,53 +1448,33 @@ async def handle_submission(
                         color: #111827;
                     }}
 
-                    .parsed-user-tag {{
-                        background: #dbeafe;
-                        color: #1e40af;
-                        padding: 0.25rem 0.75rem;
-                        border-radius: 1rem;
-                        font-size: 0.875rem;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                        margin: 0.25rem;
-                        transition: all 0.2s ease;
-                    }}
 
-                    .parsed-user-tag.email {{
-                        background: #fef3c7;
-                        color: #92400e;
-                    }}
-
-                    .parsed-user-tag:hover {{
-                        transform: translateY(-1px);
-                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                    }}
 
                     .username-input-container {{
                         display: flex;
                         flex-wrap: wrap;
                         align-items: center;
-                        gap: 0.5rem;
-                        padding: 0.75rem;
-                        border: 1px solid #d1d5db;
+                        gap: 0.25rem;
+                        padding: 0.5rem 0.75rem;
+                        border: 2px solid #e1e5e9;
                         border-radius: 8px;
-                        background: #f9fafb;
-                        min-height: 50px;
+                        background: white;
+                        min-height: 44px;
                         cursor: text;
-                        transition: all 0.2s ease;
+                        transition: all 0.15s ease;
+                        font-family: 'Slack-Lato', 'Lato', sans-serif;
                     }}
 
                     .username-input-container:focus-within {{
-                        border-color: #2563eb;
-                        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-                        background: white;
+                        border-color: #1264a3;
+                        box-shadow: 0 0 0 1px #1264a3;
                     }}
 
                     .username-pills {{
                         display: flex;
                         flex-wrap: wrap;
-                        gap: 0.5rem;
+                        gap: 0.25rem;
+                        align-items: center;
                     }}
 
                     .username-input {{
@@ -1501,52 +1482,72 @@ async def handle_submission(
                         outline: none;
                         background: transparent;
                         flex: 1;
-                        min-width: 150px;
-                        font-size: 1rem;
-                        padding: 0.25rem;
+                        min-width: 120px;
+                        font-size: 15px;
+                        padding: 0.25rem 0.5rem;
+                        font-family: inherit;
+                        color: #1d1c1d;
+                    }}
+
+                    .username-input::placeholder {{
+                        color: #616061;
+                        font-weight: 400;
                     }}
 
                     .username-pill {{
                         display: inline-flex;
                         align-items: center;
-                        gap: 0.5rem;
-                        background: #2563eb;
+                        gap: 0.25rem;
+                        background: #1264a3;
                         color: white;
-                        padding: 0.375rem 0.5rem 0.375rem 0.75rem;
-                        border-radius: 20px;
-                        font-size: 0.875rem;
-                        font-weight: 500;
-                        transition: all 0.2s ease;
+                        padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+                        border-radius: 4px;
+                        font-size: 13px;
+                        font-weight: 700;
+                        line-height: 1.2;
                         cursor: default;
+                        max-width: 200px;
+                        font-family: inherit;
                     }}
 
                     .username-pill.email {{
-                        background: #dc2626;
+                        background: #e01e5a;
                     }}
 
                     .username-pill:hover {{
-                        transform: translateY(-1px);
-                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                        opacity: 0.9;
+                    }}
+
+                    .username-pill .pill-text {{
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        max-width: 150px;
                     }}
 
                     .username-pill .remove-btn {{
-                        background: rgba(255, 255, 255, 0.3);
+                        background: transparent;
                         border: none;
-                        border-radius: 50%;
-                        width: 18px;
-                        height: 18px;
+                        border-radius: 2px;
+                        width: 16px;
+                        height: 16px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         cursor: pointer;
-                        font-size: 12px;
+                        font-size: 14px;
+                        font-weight: bold;
                         color: white;
-                        transition: all 0.2s ease;
+                        transition: background-color 0.15s ease;
+                        margin-left: 0.125rem;
                     }}
 
                     .username-pill .remove-btn:hover {{
-                        background: rgba(255, 255, 255, 0.5);
-                        transform: scale(1.1);
+                        background: rgba(255, 255, 255, 0.2);
+                    }}
+
+                    .username-pill .remove-btn:active {{
+                        background: rgba(255, 255, 255, 0.3);
                     }}
 
                     @media (max-width: 640px) {{
