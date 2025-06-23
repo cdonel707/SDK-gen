@@ -8,7 +8,7 @@ from routes import router as web_router
 from api import router as api_router
 
 # Initialize FastAPI app
-app = FastAPI()  # Trigger Railway redeploy
+app = FastAPI()  # Trigger Railway redeploy with complete templates
 
 # CORS middleware configuration
 app.add_middleware(
