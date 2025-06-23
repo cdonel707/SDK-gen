@@ -665,15 +665,20 @@ async def read_root(request: Request):
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="github_usernames">GitHub Usernames</label>
+                                <label for="github_usernames">GitHub Usernames or Emails</label>
                                 <textarea 
                                     id="github_usernames" 
                                     name="github_usernames" 
-                                    placeholder="Enter GitHub usernames separated by commas (e.g., user1, user2, user3)"
+                                    placeholder="Enter usernames or emails (one per line, or separated by spaces/commas)&#10;&#10;Examples:&#10;chris707&#10;emma545&#10;user@example.com&#10;56-emma e55th"
                                     required
+                                    rows="4"
                                 ></textarea>
                                 <div class="file-info">
-                                    Users will be added with "Maintain" permissions (can manage issues and PRs)
+                                    Smart parsing - supports usernames, emails, and various separators. Users will be added with "Maintain" permissions.
+                                </div>
+                                <div id="parsed_users" style="margin-top: 0.5rem; display: none;">
+                                    <div style="font-size: 0.875rem; color: #374151; margin-bottom: 0.5rem;">Detected users:</div>
+                                    <div id="parsed_users_list" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
                                 </div>
                             </div>
                             <button type="button" onclick="addRepoAccess()" style="background: #059669;">
@@ -694,6 +699,7 @@ async def read_root(request: Request):
                 // Initialize everything when DOM is ready
                 document.addEventListener('DOMContentLoaded', function() {{
                     initializeRepositorySearch();
+                    initializeUsernameParser();
                 }});
 
                 // Also ensure repositories are loaded when page becomes visible
@@ -711,6 +717,98 @@ async def read_root(request: Request):
                         loadUserRepositories();
                     }}
                 }});
+
+                function initializeUsernameParser() {{
+                    const usernamesTextarea = document.getElementById('github_usernames');
+                    if (!usernamesTextarea) return;
+                    
+                    // Add event listener for real-time parsing
+                    usernamesTextarea.addEventListener('input', function() {{
+                        parseAndDisplayUsers();
+                    }});
+                    
+                    // Also parse on paste
+                    usernamesTextarea.addEventListener('paste', function() {{
+                        setTimeout(parseAndDisplayUsers, 10); // Small delay to ensure paste content is processed
+                    }});
+                }}
+
+                function parseUsernames(input) {{
+                    if (!input || input.trim() === '') return [];
+                    
+                    // Split by various separators: newlines, commas, semicolons, spaces, tabs
+                    const separators = /[\n\r,;\\s\\t]+/;
+                    const rawTokens = input.split(separators);
+                    
+                    const users = [];
+                    const seenUsers = new Set();
+                    
+                    for (let token of rawTokens) {{
+                        token = token.trim();
+                        if (!token) continue;
+                        
+                        // Extract username from email if it's an email
+                        let username = token;
+                        if (token.includes('@')) {{
+                            // It's an email, extract the part before @
+                            username = token.split('@')[0];
+                        }}
+                        
+                        // Basic validation for GitHub username format
+                        // GitHub usernames can contain alphanumeric characters and hyphens
+                        // Cannot start or end with hyphen, cannot have consecutive hyphens
+                        if (isValidGitHubUsername(username) && !seenUsers.has(username.toLowerCase())) {{
+                            users.push({{
+                                original: token,
+                                username: username,
+                                isEmail: token.includes('@')
+                            }});
+                            seenUsers.add(username.toLowerCase());
+                        }}
+                    }}
+                    
+                    return users;
+                }}
+
+                function isValidGitHubUsername(username) {{
+                    // GitHub username rules:
+                    // - May only contain alphanumeric characters or single hyphens
+                    // - Cannot begin or end with a hyphen
+                    // - Maximum 39 characters
+                    const githubUsernameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{{0,37}}[a-zA-Z0-9])?$/;
+                    return githubUsernameRegex.test(username);
+                }}
+
+                function parseAndDisplayUsers() {{
+                    const usernamesTextarea = document.getElementById('github_usernames');
+                    const parsedUsersDiv = document.getElementById('parsed_users');
+                    const parsedUsersListDiv = document.getElementById('parsed_users_list');
+                    
+                    if (!usernamesTextarea || !parsedUsersDiv || !parsedUsersListDiv) return;
+                    
+                    const input = usernamesTextarea.value;
+                    const users = parseUsernames(input);
+                    
+                    if (users.length === 0) {{
+                        parsedUsersDiv.style.display = 'none';
+                        return;
+                    }}
+                    
+                    // Display parsed users
+                    parsedUsersListDiv.innerHTML = users.map(user => {{
+                        const displayText = user.isEmail ? `${{user.username}} (from ${{user.original}})` : user.username;
+                        const emailClass = user.isEmail ? ' email' : '';
+                        
+                        return `<span class="parsed-user-tag${{emailClass}}" title="${{user.isEmail ? 'Extracted from email: ' + user.original : 'GitHub username'}}">
+                            ${{displayText}}
+                        </span>`;
+                    }}).join('');
+                    
+                    parsedUsersDiv.style.display = 'block';
+                    
+                    // Store parsed usernames for form submission
+                    usernamesTextarea.dataset.parsedUsernames = JSON.stringify(users.map(u => u.username));
+                }}
 
                 async function initializeRepositorySearch() {{
                     const searchInput = document.getElementById('repository_search');
@@ -927,20 +1025,41 @@ async def read_root(request: Request):
                 }});
 
                 async function addRepoAccess() {{
-                    const usernames = document.getElementById('github_usernames').value.trim();
+                    const usernamesTextarea = document.getElementById('github_usernames');
                     const resultsDiv = document.getElementById('accessResults');
-                    
-                    console.log('Adding repo access:', selectedRepositories.length, 'repos for users:', usernames);
                     
                     if (selectedRepositories.length === 0) {{
                         resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please select at least one repository.</div>';
                         return;
                     }}
                     
-                    if (!usernames) {{
-                        resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please enter at least one GitHub username.</div>';
+                    // Get parsed usernames from the smart parser
+                    let usernames = [];
+                    if (usernamesTextarea.dataset.parsedUsernames) {{
+                        try {{
+                            usernames = JSON.parse(usernamesTextarea.dataset.parsedUsernames);
+                        }} catch (e) {{
+                            console.error('Error parsing stored usernames:', e);
+                        }}
+                    }}
+                    
+                    // Fallback to manual parsing if stored data is not available
+                    if (usernames.length === 0) {{
+                        const rawInput = usernamesTextarea.value.trim();
+                        if (!rawInput) {{
+                            resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">Please enter at least one GitHub username or email.</div>';
+                            return;
+                        }}
+                        const parsedUsers = parseUsernames(rawInput);
+                        usernames = parsedUsers.map(u => u.username);
+                    }}
+                    
+                    if (usernames.length === 0) {{
+                        resultsDiv.innerHTML = '<div style="color: #dc2626; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca;">No valid GitHub usernames found. Please check your input.</div>';
                         return;
                     }}
+                    
+                    console.log('Adding repo access:', selectedRepositories.length, 'repos for users:', usernames);
 
                     resultsDiv.innerHTML = '<div style="color: #2563eb; background: #eff6ff; padding: 1rem; border-radius: 8px; border: 1px solid #bfdbfe;">Processing...</div>';
 
@@ -952,7 +1071,7 @@ async def read_root(request: Request):
                             }},
                             body: JSON.stringify({{
                                 repositories: selectedRepositories.map(repo => repo.full_name),
-                                usernames: usernames.split(',').map(u => u.trim()).filter(u => u.length > 0)
+                                usernames: usernames
                             }})
                         }});
 
@@ -1278,12 +1397,43 @@ async def handle_submission(
                             transition: all 0.2s ease;
                         }}
 
-                        .home-link:hover {{
-                            background: #f3f4f6;
-                            color: #111827;
-                        }}
+                                            .home-link:hover {{
+                        background: #f3f4f6;
+                        color: #111827;
+                    }}
 
-                        @media (max-width: 640px) {{
+                    .parsed-user-tag {{
+                        background: #dbeafe;
+                        color: #1e40af;
+                        padding: 0.25rem 0.75rem;
+                        border-radius: 1rem;
+                        font-size: 0.875rem;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        margin: 0.25rem;
+                        transition: all 0.2s ease;
+                    }}
+
+                    .parsed-user-tag.email {{
+                        background: #fef3c7;
+                        color: #92400e;
+                    }}
+
+                    .parsed-user-tag:hover {{
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }}
+
+                    #parsed_users {{
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        padding: 1rem;
+                        margin-top: 0.75rem;
+                    }}
+
+                    @media (max-width: 640px) {{
                             body {{
                                 padding: 1rem;
                             }}
